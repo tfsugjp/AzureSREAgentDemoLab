@@ -16,7 +16,7 @@ builder.Services.AddSingleton(_ => new CosmosClient(cosmosConnectionString,
     new CosmosClientOptions { ApplicationName = "NotificationService" }));
 
 // ── Health checks ─────────────────────────────────────────────────────────────
-// StartupHealthCheck must be singleton so its IsReady flag is shared.
+// StartupHealthCheck must be singleton so its startup state is shared.
 builder.Services.AddSingleton<StartupHealthCheck>();
 
 builder.Services

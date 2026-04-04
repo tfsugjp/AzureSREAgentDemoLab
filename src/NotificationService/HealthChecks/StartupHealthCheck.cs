@@ -11,7 +11,6 @@ public class StartupHealthCheck : IHealthCheck
     private enum InitState { Pending, Ready, Failed }
 
     private volatile int _state = (int)InitState.Pending;
-    private volatile string? _failureMessage;
 
     public void MarkReady()
     {
@@ -20,7 +19,6 @@ public class StartupHealthCheck : IHealthCheck
 
     public void MarkFailed(Exception? exception = null)
     {
-        _failureMessage = exception?.Message;
         Interlocked.Exchange(ref _state, (int)InitState.Failed);
     }
 
@@ -31,7 +29,7 @@ public class StartupHealthCheck : IHealthCheck
         var result = (InitState)_state switch
         {
             InitState.Ready   => HealthCheckResult.Healthy("Startup initialization complete."),
-            InitState.Failed  => HealthCheckResult.Unhealthy($"Startup initialization failed. {_failureMessage}".TrimEnd()),
+            InitState.Failed  => HealthCheckResult.Unhealthy("Startup initialization failed."),
             _                 => HealthCheckResult.Unhealthy("Startup initialization is still in progress.")
         };
 
