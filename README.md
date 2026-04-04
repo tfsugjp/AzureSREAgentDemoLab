@@ -236,7 +236,7 @@ az ad sp create --id $APP_ID
 # クライアントシークレットを作成 (有効期限: 1年)
 CLIENT_SECRET=$(az ad app credential reset --id $APP_ID --years 1 --query password -o tsv)
 
-echo "ClientSecret : $CLIENT_SECRET"
+echo "ClientSecret を取得しました。安全な場所に保存してください。"
 echo "Audience     : api://$APP_ID"
 ```
 
@@ -255,11 +255,11 @@ ROLE_ID=$(az ad app show --id $APP_ID \
 # 自身のサービスプリンシパルにロールを付与 (管理者同意)
 az rest --method POST \
   --uri "https://graph.microsoft.com/v1.0/servicePrincipals/${SP_OID}/appRoleAssignments" \
-  --body "{
-    \"principalId\": \"${SP_OID}\",
-    \"resourceId\": \"${SP_OID}\",
-    \"appRoleId\": \"${ROLE_ID}\"
-  }"
+  --body "$(jq -n \
+    --arg pid "$SP_OID" \
+    --arg rid "$SP_OID" \
+    --arg aid "$ROLE_ID" \
+    '{principalId: $pid, resourceId: $rid, appRoleId: $aid}')"
 ```
 
 #### 2-5. Kubernetes シークレットの更新
@@ -327,7 +327,7 @@ TOKEN=$(curl -s -X POST \
   -d "scope=api://${CLIENT_ID}/.default" \
   | jq -r .access_token)
 
-echo "Token: ${TOKEN:0:80}..."   # 先頭80文字を確認
+echo "Token acquired: $([ -n "$TOKEN" ] && echo 'yes' || echo 'no')"
 ```
 
 > `jq` がない場合は `python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])"` に置き換えてください。
