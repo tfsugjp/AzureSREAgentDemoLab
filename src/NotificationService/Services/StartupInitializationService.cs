@@ -28,7 +28,7 @@ public class StartupInitializationService : BackgroundService
             // Replace with real Cosmos DB initialization logic as needed.
             await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
 
-            _startupHealthCheck.IsReady = true;
+            _startupHealthCheck.MarkReady();
             _logger.LogInformation("NotificationService: Initialization complete. Service is ready.");
         }
         catch (OperationCanceledException)
@@ -37,6 +37,7 @@ public class StartupInitializationService : BackgroundService
         }
         catch (Exception ex)
         {
+            _startupHealthCheck.MarkFailed(ex);
             _logger.LogError(ex, "NotificationService: Initialization failed.");
         }
     }

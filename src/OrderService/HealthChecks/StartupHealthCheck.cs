@@ -3,25 +3,38 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 namespace OrderService.HealthChecks;
 
 /// <summary>
-/// Tracks whether startup initialization (e.g., order container setup) has completed.
-/// Registered as a singleton so the <see cref="IsReady"/> flag persists across requests.
+/// Tracks startup initialization state (Pending → Ready or Failed).
+/// Registered as a singleton so state persists across requests.
 /// </summary>
 public class StartupHealthCheck : IHealthCheck
 {
-    private volatile bool _isReady;
+    private enum InitState { Pending, Ready, Failed }
 
-    public bool IsReady
+    private volatile int _state = (int)InitState.Pending;
+    private string? _failureMessage;
+
+    public void MarkReady()
     {
-        get => _isReady;
-        set => _isReady = value;
+        Interlocked.Exchange(ref _state, (int)InitState.Ready);
+    }
+
+    public void MarkFailed(Exception? exception = null)
+    {
+        _failureMessage = exception?.Message;
+        Interlocked.Exchange(ref _state, (int)InitState.Failed);
     }
 
     public Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(_isReady
-            ? HealthCheckResult.Healthy("Startup initialization complete.")
-            : HealthCheckResult.Unhealthy("Startup initialization is still in progress."));
+        var result = (InitState)_state switch
+        {
+            InitState.Ready   => HealthCheckResult.Healthy("Startup initialization complete."),
+            InitState.Failed  => HealthCheckResult.Unhealthy($"Startup initialization failed. {_failureMessage}".TrimEnd()),
+            _                 => HealthCheckResult.Unhealthy("Startup initialization is still in progress.")
+        };
+
+        return Task.FromResult(result);
     }
 }
