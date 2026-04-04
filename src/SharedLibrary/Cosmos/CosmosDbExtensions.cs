@@ -2,6 +2,7 @@ using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Net.Http;
 
 namespace SharedLibrary.Cosmos;
 
@@ -15,6 +16,7 @@ public static class CosmosDbExtensions
         if (string.IsNullOrWhiteSpace(connectionString))
             throw new InvalidOperationException("CosmosDb:ConnectionString is not configured.");
         var databaseName = configuration["CosmosDb:DatabaseName"] ?? "GlobalAzureDemo";
+        var allowInsecureCertificate = configuration.GetValue<bool>("CosmosDb:AllowInsecureCertificate");
 
         services.AddSingleton<CosmosClient>(sp =>
         {
@@ -27,9 +29,25 @@ public static class CosmosDbExtensions
                 {
                     PropertyNamingPolicy = CosmosPropertyNamingPolicy.CamelCase
                 },
-                ConnectionMode = ConnectionMode.Direct,
+                ConnectionMode = ConnectionMode.Gateway,
                 ApplicationName = "GlobalAzureDemo2026"
             };
+
+            if (allowInsecureCertificate)
+            {
+                var environment = configuration["ASPNETCORE_ENVIRONMENT"] ?? "Production";
+                if (!environment.Equals("Development", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException(
+                        "CosmosDb:AllowInsecureCertificate can only be enabled in the Development environment. " +
+                        "Do not use this setting in production.");
+
+                logger.LogWarning("CosmosDb:AllowInsecureCertificate is enabled. SSL certificate validation is disabled. Use only in development/emulator environments.");
+                var handler = new HttpClientHandler
+                {
+                    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+                };
+                clientOptions.HttpClientFactory = () => new HttpClient(handler, disposeHandler: false);
+            }
 
             return new CosmosClient(connectionString, clientOptions);
         });
