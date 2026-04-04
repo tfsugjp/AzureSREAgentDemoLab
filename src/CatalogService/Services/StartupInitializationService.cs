@@ -50,7 +50,7 @@ public class StartupInitializationService : BackgroundService
         }
         catch (Exception ex)
         {
-            _startupHealthCheck.MarkFailed(ex);
+            _startupHealthCheck.MarkFailed();
             _logger.LogError(ex, "CatalogService: Initialization failed.");
         }
     }
