@@ -58,12 +58,12 @@ public static class SeedData
     {
         try
         {
-            await container.ReadItemAsync<T>(id, new PartitionKey(partitionKey));
-        }
-        catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
-        {
             await container.CreateItemAsync(item, new PartitionKey(partitionKey));
             logger.LogInformation("Seeded item: {Id}", id);
+        }
+        catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.Conflict)
+        {
+            logger.LogDebug("Item {Id} already exists, skipping", id);
         }
     }
 
