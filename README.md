@@ -147,6 +147,10 @@ docker compose up --build
 
 開発モードでは認証がスキップされます (`Authentication:DisableAuth=true`)。
 
+> **注意**: docker-compose 環境では `CosmosDb:AllowInsecureCertificate=true` が設定されています。
+> これは Linux Cosmos DB エミュレーターの自己署名証明書を許可するための設定です。接続モード（Gateway）はこの設定とは別に `CosmosDb:ConnectionMode` で構成できます（未設定かつ `AllowInsecureCertificate=true` の場合は Gateway、それ以外は Direct がデフォルトです）。
+> **本番環境では絶対に使用しないでください。**
+
 ### 個別サービスの起動
 
 ```bash
