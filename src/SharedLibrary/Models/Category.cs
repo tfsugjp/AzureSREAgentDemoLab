@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace SharedLibrary.Models;
 
-public class Category
+public class Category : IHasId
 {
     [JsonPropertyName("id")]
     public string Id { get; set; } = Guid.NewGuid().ToString();

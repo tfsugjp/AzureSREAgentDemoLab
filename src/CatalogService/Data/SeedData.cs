@@ -27,7 +27,7 @@ public static class SeedData
 
         foreach (var category in categories)
         {
-            await UpsertItemAsync(container, category, category.Id, category.Id, logger);
+            await SeedItemAsync(container, category, category.Id, logger);
         }
     }
 
@@ -38,7 +38,7 @@ public static class SeedData
 
         foreach (var product in products)
         {
-            await UpsertItemAsync(container, product, product.Id, product.CategoryId, logger);
+            await SeedItemAsync(container, product, product.CategoryId, logger);
         }
     }
 
@@ -49,21 +49,22 @@ public static class SeedData
 
         foreach (var item in items)
         {
-            await UpsertItemAsync(container, item, item.Id, item.ProductId, logger);
+            await SeedItemAsync(container, item, item.ProductId, logger);
         }
     }
 
-    private static async Task UpsertItemAsync<T>(
-        Container container, T item, string id, string partitionKey, ILogger logger)
+    private static async Task SeedItemAsync<T>(
+        Container container, T item, string partitionKey, ILogger logger)
+        where T : IHasId
     {
         try
         {
             await container.CreateItemAsync(item, new PartitionKey(partitionKey));
-            logger.LogInformation("Seeded item: {Id}", id);
+            logger.LogInformation("Seeded item: {Id}", item.Id);
         }
         catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.Conflict)
         {
-            logger.LogDebug("Item {Id} already exists, skipping", id);
+            logger.LogDebug("Item {Id} already exists, skipping", item.Id);
         }
     }
 
