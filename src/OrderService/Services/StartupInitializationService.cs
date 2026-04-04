@@ -1,19 +1,24 @@
+using OrderService.Data;
 using OrderService.HealthChecks;
+using SharedLibrary.Cosmos;
 
 namespace OrderService.Services;
 
-/// <summary>
-/// Performs order service startup initialization (e.g., container setup) and signals readiness.
-/// </summary>
 public class StartupInitializationService : BackgroundService
 {
+    private readonly IServiceProvider _serviceProvider;
+    private readonly IConfiguration _configuration;
     private readonly StartupHealthCheck _startupHealthCheck;
     private readonly ILogger<StartupInitializationService> _logger;
 
     public StartupInitializationService(
+        IServiceProvider serviceProvider,
+        IConfiguration configuration,
         StartupHealthCheck startupHealthCheck,
         ILogger<StartupInitializationService> logger)
     {
+        _serviceProvider = serviceProvider;
+        _configuration = configuration;
         _startupHealthCheck = startupHealthCheck;
         _logger = logger;
     }
@@ -24,9 +29,15 @@ public class StartupInitializationService : BackgroundService
 
         try
         {
-            // Simulate order container setup / schema initialization.
-            // Replace with real Cosmos DB initialization logic as needed.
-            await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
+            using var scope = _serviceProvider.CreateScope();
+            var databaseName = _configuration["CosmosDb:DatabaseName"] ?? "GlobalAzureDemo";
+
+            await scope.ServiceProvider.EnsureCosmosDbCreatedAsync(databaseName,
+            [
+                ("orders", "/userId")
+            ]);
+
+            await SeedData.SeedAsync(scope.ServiceProvider);
 
             _startupHealthCheck.MarkReady();
             _logger.LogInformation("OrderService: Initialization complete. Service is ready.");
@@ -37,7 +48,7 @@ public class StartupInitializationService : BackgroundService
         }
         catch (Exception ex)
         {
-            _startupHealthCheck.MarkFailed(ex);
+            _startupHealthCheck.MarkFailed();
             _logger.LogError(ex, "OrderService: Initialization failed.");
         }
     }

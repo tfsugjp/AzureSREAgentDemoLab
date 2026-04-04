@@ -17,7 +17,7 @@ public class StartupHealthCheck : IHealthCheck
         Interlocked.Exchange(ref _state, (int)InitState.Ready);
     }
 
-    public void MarkFailed(Exception? exception = null)
+    public void MarkFailed()
     {
         Interlocked.Exchange(ref _state, (int)InitState.Failed);
     }

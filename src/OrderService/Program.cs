@@ -1,53 +1,64 @@
+using OrderService.Endpoints;
 using OrderService.HealthChecks;
 using OrderService.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using SharedLibrary.Auth;
+using SharedLibrary.Cosmos;
+using SharedLibrary.Telemetry;
 using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ── Cosmos DB client ──────────────────────────────────────────────────────────
-var cosmosConnectionString = builder.Configuration["CosmosDb:ConnectionString"]
-    ?? throw new InvalidOperationException(
-        "CosmosDb:ConnectionString is required. Set it via appsettings.json or an environment variable.");
+builder.AddServiceTelemetry("OrderService");
+builder.Services.AddCosmosDb(builder.Configuration);
 
-builder.Services.AddSingleton(_ => new CosmosClient(cosmosConnectionString,
-    new CosmosClientOptions { ApplicationName = "OrderService" }));
+var disableAuth = builder.Configuration.GetValue<bool>("Authentication:DisableAuth");
+if (disableAuth)
+{
+    builder.Services.AddAuthentication().AddJwtBearer();
+    builder.Services.AddAuthorization();
+}
+else
+{
+    builder.Services.AddEntraAuth(builder.Configuration);
+}
 
-// ── Health checks ─────────────────────────────────────────────────────────────
-// StartupHealthCheck must be singleton so its startup state is shared.
 builder.Services.AddSingleton<StartupHealthCheck>();
-
 builder.Services
     .AddHealthChecks()
     .AddCheck<CosmosDbHealthCheck>("cosmosdb", tags: ["ready"])
-    .AddCheck<StartupHealthCheck> ("startup",  tags: ["ready"]);
+    .AddCheck<StartupHealthCheck>("startup", tags: ["ready"]);
 
-// ── Startup initialization ────────────────────────────────────────────────────
 builder.Services.AddHostedService<StartupInitializationService>();
+builder.Services.AddScoped<IOrderService, OrderServiceImpl>();
 
 var app = builder.Build();
 
-// ── Liveness: is the process alive? (no dependency checks) ───────────────────
+app.UseServiceTelemetry();
+
+if (!disableAuth)
+{
+    app.UseEntraAuth();
+}
+
+app.MapOrderEndpoints();
+
 app.MapHealthChecks("/health", new HealthCheckOptions
 {
     Predicate = _ => false,
     ResponseWriter = WriteJsonResponse
-});
+}).AllowAnonymous();
 
-// ── Readiness: are all dependencies up and initialization done? ───────────────
 app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     Predicate = check => check.Tags.Contains("ready"),
     ResponseWriter = WriteJsonResponse
-});
-
-app.MapGet("/", () => "OrderService is running.");
+}).AllowAnonymous();
 
 app.Run();
 
-// ── Helper ────────────────────────────────────────────────────────────────────
 static Task WriteJsonResponse(HttpContext context, HealthReport report)
 {
     context.Response.ContentType = "application/json";
@@ -55,12 +66,12 @@ static Task WriteJsonResponse(HttpContext context, HealthReport report)
     var result = new
     {
         status = report.Status.ToString(),
-        checks = report.Entries.Select(e => new
+        checks = report.Entries.Select(entry => new
         {
-            name        = e.Key,
-            status      = e.Value.Status.ToString(),
-            description = e.Value.Description,
-            duration    = e.Value.Duration.TotalMilliseconds
+            name = entry.Key,
+            status = entry.Value.Status.ToString(),
+            description = entry.Value.Description,
+            duration = entry.Value.Duration.TotalMilliseconds
         })
     };
 
