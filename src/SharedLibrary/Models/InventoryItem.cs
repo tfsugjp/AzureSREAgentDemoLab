@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace SharedLibrary.Models;
 
-public class InventoryItem
+public class InventoryItem : IHasId
 {
     [JsonPropertyName("id")]
     public string Id { get; set; } = Guid.NewGuid().ToString();
