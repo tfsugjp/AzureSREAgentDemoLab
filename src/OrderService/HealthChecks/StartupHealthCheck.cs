@@ -11,7 +11,7 @@ public class StartupHealthCheck : IHealthCheck
     private enum InitState { Pending, Ready, Failed }
 
     private volatile int _state = (int)InitState.Pending;
-    private string? _failureMessage;
+    private volatile string? _failureMessage;
 
     public void MarkReady()
     {
