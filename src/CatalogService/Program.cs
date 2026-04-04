@@ -1,19 +1,19 @@
-using CatalogService.Data;
 using CatalogService.Endpoints;
+using CatalogService.HealthChecks;
 using CatalogService.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using SharedLibrary.Auth;
 using SharedLibrary.Cosmos;
 using SharedLibrary.Telemetry;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Observability
 builder.AddServiceTelemetry("CatalogService");
-
-// Cosmos DB
 builder.Services.AddCosmosDb(builder.Configuration);
 
-// Authentication
 var disableAuth = builder.Configuration.GetValue<bool>("Authentication:DisableAuth");
 if (disableAuth)
 {
@@ -25,10 +25,14 @@ else
     builder.Services.AddEntraAuth(builder.Configuration);
 }
 
-// Health checks
-builder.Services.AddHealthChecks();
+builder.Services.AddSingleton<StartupHealthCheck>();
+builder.Services
+    .AddHealthChecks()
+    .AddCheck<CosmosDbHealthCheck>("cosmosdb", tags: ["ready"])
+    .AddCheck<StartupHealthCheck>("startup", tags: ["ready"]);
 
-// DI registrations
+builder.Services.AddHostedService<StartupInitializationService>();
+
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IProductSearchService, ProductSearchService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
@@ -36,7 +40,6 @@ builder.Services.AddScoped<IInventoryService, InventoryService>();
 
 var app = builder.Build();
 
-// Middleware
 app.UseServiceTelemetry();
 
 if (!disableAuth)
@@ -44,24 +47,40 @@ if (!disableAuth)
     app.UseEntraAuth();
 }
 
-// Map endpoints
 app.MapProductEndpoints();
 app.MapCategoryEndpoints();
 app.MapInventoryEndpoints();
 
-// Health check endpoints
-app.MapHealthChecks("/health").AllowAnonymous();
-app.MapGet("/health/ready", () => Results.Ok(new { status = "ready" })).AllowAnonymous();
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    Predicate = _ => false,
+    ResponseWriter = WriteJsonResponse
+}).AllowAnonymous();
 
-// Database initialization and seeding
-var databaseName = builder.Configuration["CosmosDb:DatabaseName"] ?? "GlobalAzureDemo";
-await app.Services.EnsureCosmosDbCreatedAsync(databaseName,
-[
-    ("products", "/categoryId"),
-    ("categories", "/id"),
-    ("inventory", "/productId")
-]);
-
-await SeedData.SeedAsync(app.Services);
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready"),
+    ResponseWriter = WriteJsonResponse
+}).AllowAnonymous();
 
 app.Run();
+
+static Task WriteJsonResponse(HttpContext context, HealthReport report)
+{
+    context.Response.ContentType = "application/json";
+
+    var result = new
+    {
+        status = report.Status.ToString(),
+        checks = report.Entries.Select(entry => new
+        {
+            name = entry.Key,
+            status = entry.Value.Status.ToString(),
+            description = entry.Value.Description,
+            duration = entry.Value.Duration.TotalMilliseconds
+        })
+    };
+
+    return context.Response.WriteAsync(
+        JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true }));
+}

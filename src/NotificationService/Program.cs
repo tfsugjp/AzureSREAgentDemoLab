@@ -1,9 +1,12 @@
-using NotificationService.Data;
 using NotificationService.Endpoints;
+using NotificationService.HealthChecks;
 using NotificationService.Services;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using SharedLibrary.Auth;
 using SharedLibrary.Cosmos;
 using SharedLibrary.Telemetry;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,7 +19,13 @@ if (!disableAuth)
     builder.Services.AddEntraAuth(builder.Configuration);
 }
 
-builder.Services.AddHealthChecks();
+builder.Services.AddSingleton<StartupHealthCheck>();
+builder.Services
+    .AddHealthChecks()
+    .AddCheck<CosmosDbHealthCheck>("cosmosdb", tags: ["ready"])
+    .AddCheck<StartupHealthCheck>("startup", tags: ["ready"]);
+
+builder.Services.AddHostedService<StartupInitializationService>();
 builder.Services.AddScoped<INotificationService, NotificationServiceImpl>();
 
 var app = builder.Build();
@@ -30,14 +39,36 @@ if (!disableAuth)
 
 app.MapNotificationEndpoints();
 
-app.MapHealthChecks("/health").AllowAnonymous();
-app.MapGet("/health/ready", () => Results.Ok(new { status = "ready" })).AllowAnonymous();
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    Predicate = _ => false,
+    ResponseWriter = WriteJsonResponse
+}).AllowAnonymous();
 
-var databaseName = builder.Configuration["CosmosDb:DatabaseName"] ?? "GlobalAzureDemo";
-await app.Services.EnsureCosmosDbCreatedAsync(
-    databaseName,
-    [("notifications", "/userId")]);
-
-await SeedData.SeedAsync(app.Services);
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready"),
+    ResponseWriter = WriteJsonResponse
+}).AllowAnonymous();
 
 app.Run();
+
+static Task WriteJsonResponse(HttpContext context, HealthReport report)
+{
+    context.Response.ContentType = "application/json";
+
+    var result = new
+    {
+        status = report.Status.ToString(),
+        checks = report.Entries.Select(entry => new
+        {
+            name = entry.Key,
+            status = entry.Value.Status.ToString(),
+            description = entry.Value.Description,
+            duration = entry.Value.Duration.TotalMilliseconds
+        })
+    };
+
+    return context.Response.WriteAsync(
+        JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true }));
+}

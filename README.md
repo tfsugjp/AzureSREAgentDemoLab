@@ -91,12 +91,39 @@ graph TB
 | GET | `/api/notifications/user/{userId}` | ユーザー別通知 |
 | DELETE | `/api/notifications/{id}` | 通知削除 |
 
-### ヘルスチェック (各サービス共通、認証不要)
+## ヘルスチェック エンドポイント
 
-| Method | Path | 説明 |
-|--------|------|------|
-| GET | `/health` | 総合ヘルスチェック |
-| GET | `/health/ready` | Readiness probe |
+各サービスは、Kubernetes の Liveness / Readiness プローブに対応した一貫したヘルスチェック エンドポイントを公開しています。
+
+### `GET /health` — Liveness プローブ
+
+プロセスが生存しているかどうかのみを確認します。依存関係はチェックしません。
+
+```json
+{
+  "status": "Healthy",
+  "checks": []
+}
+```
+
+### `GET /health/ready` — Readiness プローブ
+
+以下の条件がすべて満たされた場合のみ `Healthy` を返します。
+
+| チェック | 説明 |
+|---|---|
+| `cosmosdb` | `CosmosClient.ReadAccountAsync()` が成功すること |
+| `startup` | Cosmos DB 初期化とシード投入が完了していること |
+
+```json
+{
+  "status": "Healthy",
+  "checks": [
+    { "name": "cosmosdb", "status": "Healthy", "description": "Cosmos DB is reachable.", "duration": 42.3 },
+    { "name": "startup", "status": "Healthy", "description": "Startup initialization complete.", "duration": 0.1 }
+  ]
+}
+```
 
 ## ローカル開発
 
@@ -123,8 +150,15 @@ docker compose up --build
 ### 個別サービスの起動
 
 ```bash
-cd src/CatalogService
-dotnet run
+dotnet run --project src/CatalogService
+dotnet run --project src/OrderService
+dotnet run --project src/NotificationService
+```
+
+### ビルド
+
+```bash
+dotnet build GlobalAzureDemo2026.slnx
 ```
 
 ## AKS デプロイ
@@ -132,10 +166,8 @@ dotnet run
 ### 1. Azure リソースの準備
 
 ```bash
-# リソースグループ
 az group create --name rg-global-azure-demo --location japaneast
 
-# AKS クラスター (コスト最適化: Standard_B2s)
 az aks create \
   --resource-group rg-global-azure-demo \
   --name aks-global-azure-demo \
@@ -144,14 +176,12 @@ az aks create \
   --enable-managed-identity \
   --generate-ssh-keys
 
-# Cosmos DB (サーバーレスモード)
 az cosmosdb create \
   --resource-group rg-global-azure-demo \
   --name cosmos-global-azure-demo \
   --capabilities EnableServerless \
   --locations regionName=japaneast
 
-# ACR (Azure Container Registry)
 az acr create \
   --resource-group rg-global-azure-demo \
   --name acrglobalazuredemo \
@@ -162,7 +192,6 @@ az acr create \
 
 ```bash
 az ad app create --display-name "GlobalAzureDemo2026-API"
-# 出力から Application (client) ID と Tenant ID をメモ
 ```
 
 ### 3. コンテナイメージのビルドとプッシュ
@@ -170,7 +199,6 @@ az ad app create --display-name "GlobalAzureDemo2026-API"
 ```bash
 az acr login --name acrglobalazuredemo
 
-# 各サービスのビルドとプッシュ
 docker build -t acrglobalazuredemo.azurecr.io/catalog-service:latest -f src/CatalogService/Dockerfile .
 docker build -t acrglobalazuredemo.azurecr.io/order-service:latest -f src/OrderService/Dockerfile .
 docker build -t acrglobalazuredemo.azurecr.io/notification-service:latest -f src/NotificationService/Dockerfile .
@@ -183,10 +211,6 @@ docker push acrglobalazuredemo.azurecr.io/notification-service:latest
 ### 4. Kubernetes デプロイ
 
 ```bash
-# K8s マニフェストの ACR 名とシークレットを更新
-# k8s/catalog-service.yaml 等の <ACR_NAME> を実際の ACR 名に置換
-# k8s/catalog-service.yaml 等の Secret を実際の値に更新
-
 kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/catalog-service.yaml
 kubectl apply -f k8s/order-service.yaml
@@ -204,7 +228,7 @@ kubectl apply -f k8s/ingress.yaml
 
 ### トリガー条件
 
-1. **スローダウン**: クエリパラメータ `q` に `"premium"` を含めてリクエスト
+1. **スローダウン**: クエリパラメータ `q` に `premium` を含めてリクエスト
    ```bash
    curl http://localhost:5001/api/products/search?q=premium
    ```
@@ -217,12 +241,6 @@ kubectl apply -f k8s/ingress.yaml
    ```
    - 原因: `String.Substring` の境界チェック不備
    - 結果: `ArgumentOutOfRangeException` → HTTP 500
-
-### 検出方法
-
-- **OpenTelemetry トレース**: `/api/products/search` のレイテンシスパイクが可視化される
-- **メトリクス**: HTTP 5xx レートの上昇
-- **ログ**: 例外スタックトレースが記録される
 
 ## サンプルデータ
 
