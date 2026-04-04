@@ -11,8 +11,9 @@ public static class CosmosDbExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var connectionString = configuration["CosmosDb:ConnectionString"]
-            ?? throw new InvalidOperationException("CosmosDb:ConnectionString is not configured.");
+        var connectionString = configuration["CosmosDb:ConnectionString"];
+        if (string.IsNullOrWhiteSpace(connectionString))
+            throw new InvalidOperationException("CosmosDb:ConnectionString is not configured.");
         var databaseName = configuration["CosmosDb:DatabaseName"] ?? "GlobalAzureDemo";
 
         services.AddSingleton<CosmosClient>(sp =>

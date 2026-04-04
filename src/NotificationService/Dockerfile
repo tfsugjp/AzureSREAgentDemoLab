@@ -1,12 +1,12 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-COPY SharedLibrary/SharedLibrary.csproj SharedLibrary/
-COPY NotificationService/NotificationService.csproj NotificationService/
+COPY src/SharedLibrary/SharedLibrary.csproj SharedLibrary/
+COPY src/NotificationService/NotificationService.csproj NotificationService/
 RUN dotnet restore NotificationService/NotificationService.csproj
 
-COPY SharedLibrary/ SharedLibrary/
-COPY NotificationService/ NotificationService/
+COPY src/SharedLibrary/ SharedLibrary/
+COPY src/NotificationService/ NotificationService/
 RUN dotnet publish NotificationService/NotificationService.csproj -c Release -o /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime

@@ -21,17 +21,17 @@ builder.Services.AddScoped<INotificationService, NotificationServiceImpl>();
 
 var app = builder.Build();
 
+app.UseServiceTelemetry();
+
 if (!disableAuth)
 {
     app.UseEntraAuth();
 }
 
-app.UseServiceTelemetry();
-
 app.MapNotificationEndpoints();
 
 app.MapHealthChecks("/health").AllowAnonymous();
-app.MapGet("/health/ready", () => Results.Ok(new { Status = "Ready" })).AllowAnonymous();
+app.MapGet("/health/ready", () => Results.Ok(new { status = "ready" })).AllowAnonymous();
 
 var databaseName = builder.Configuration["CosmosDb:DatabaseName"] ?? "GlobalAzureDemo";
 await app.Services.EnsureCosmosDbCreatedAsync(

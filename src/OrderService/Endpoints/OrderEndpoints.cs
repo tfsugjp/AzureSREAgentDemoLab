@@ -41,7 +41,7 @@ public static class OrderEndpoints
         {
             var deleted = await service.DeleteAsync(id);
             return deleted
-                ? Results.NoContent()
+                ? Results.Ok(ApiResponse<bool>.Ok(true))
                 : Results.NotFound(ApiResponse<bool>.Fail($"Order '{id}' not found"));
         });
 
@@ -65,7 +65,7 @@ public static class OrderEndpoints
             if (order is null)
                 return Results.NotFound(ApiResponse<decimal>.Fail($"Order '{id}' not found"));
 
-            var total = await service.CalculateTotalAsync(id);
+            var total = order.Items.Sum(i => i.Subtotal);
             return Results.Ok(ApiResponse<decimal>.Ok(total));
         });
 
