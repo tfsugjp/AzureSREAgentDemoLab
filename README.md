@@ -244,6 +244,10 @@ echo "Audience     : api://$APP_ID"
 
 #### 2-4. アプリ ロールの管理者同意
 
+> **前提**: このステップでは `jq` を使用します。
+> インストールされていない場合: `sudo apt-get install jq` (Debian/Ubuntu) または `brew install jq` (macOS)。
+> `jq` が使えない場合の代替コマンドは以下に記載しています。
+
 ```bash
 # サービスプリンシパルの Object ID を取得
 SP_OID=$(az ad sp show --id $APP_ID --query id -o tsv)
@@ -252,7 +256,7 @@ SP_OID=$(az ad sp show --id $APP_ID --query id -o tsv)
 ROLE_ID=$(az ad app show --id $APP_ID \
   --query "appRoles[?value=='Api.Access'].id" -o tsv)
 
-# 自身のサービスプリンシパルにロールを付与 (管理者同意)
+# 自身のサービスプリンシパルにロールを付与 (管理者同意) — jq を使う場合
 az rest --method POST \
   --uri "https://graph.microsoft.com/v1.0/servicePrincipals/${SP_OID}/appRoleAssignments" \
   --body "$(jq -n \
@@ -260,6 +264,13 @@ az rest --method POST \
     --arg rid "$SP_OID" \
     --arg aid "$ROLE_ID" \
     '{principalId: $pid, resourceId: $rid, appRoleId: $aid}')"
+
+# jq がない場合は python3 で JSON を組み立てる
+# az rest --method POST \
+#   --uri "https://graph.microsoft.com/v1.0/servicePrincipals/${SP_OID}/appRoleAssignments" \
+#   --body "$(python3 -c "
+# import json, sys
+# print(json.dumps({'principalId': '${SP_OID}', 'resourceId': '${SP_OID}', 'appRoleId': '${ROLE_ID}'}))")"
 ```
 
 #### 2-5. Kubernetes シークレットの更新
@@ -273,7 +284,15 @@ kubectl create secret generic entra-id-secret \
   --from-literal=ClientId="${APP_ID}" \
   --from-literal=Audience="api://${APP_ID}" \
   --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl create secret generic cosmos-db-secret \
+  --namespace global-azure-demo \
+  --from-literal=ConnectionString="<YOUR_COSMOS_DB_CONNECTION_STRING>" \
+  --dry-run=client -o yaml | kubectl apply -f -
 ```
+
+> **注**: `k8s/catalog-service.yaml` にはプレースホルダー入りの Secret テンプレートが含まれていましたが、このテンプレートは `k8s/secrets.yaml` に分離されています。
+> 上記 `kubectl` コマンドで実際の値を登録した後は、`k8s/secrets.yaml` を apply しないでください (上書きされます)。
 
 ### 3. コンテナイメージのビルドとプッシュ
 
@@ -290,6 +309,9 @@ docker push acrglobalazuredemo.azurecr.io/notification-service:latest
 ```
 
 ### 4. Kubernetes デプロイ
+
+> **注**: Secret は手順 2-5 の `kubectl create secret` コマンドで登録済みです。
+> `k8s/secrets.yaml` はテンプレートとして提供されていますが、Secret を登録済みの場合は apply しないでください (実際の値がプレースホルダーで上書きされます)。
 
 ```bash
 kubectl apply -f k8s/namespace.yaml
@@ -313,6 +335,15 @@ CLIENT_SECRET="<YOUR_CLIENT_SECRET>"
 INGRESS_IP=$(kubectl get ingress global-azure-demo-ingress \
   -n global-azure-demo \
   -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+if [ -z "$INGRESS_IP" ]; then
+  INGRESS_IP=$(kubectl get ingress global-azure-demo-ingress \
+    -n global-azure-demo \
+    -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+fi
+
+echo "Ingress endpoint: ${INGRESS_IP}"
+# 空の場合は以下で状態を確認:
+# kubectl get ingress global-azure-demo-ingress -n global-azure-demo -o wide
 ```
 
 ### アクセストークンの取得 (client_credentials フロー)
@@ -327,7 +358,11 @@ TOKEN=$(curl -s -X POST \
   -d "scope=api://${CLIENT_ID}/.default" \
   | jq -r .access_token)
 
-echo "Token acquired: $([ -n "$TOKEN" ] && echo 'yes' || echo 'no')"
+if [ -n "$TOKEN" ]; then
+  echo "Token acquired: yes"
+else
+  echo "Token acquired: no"
+fi
 ```
 
 > `jq` がない場合は `python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])"` に置き換えてください。
