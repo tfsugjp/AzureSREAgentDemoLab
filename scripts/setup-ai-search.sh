@@ -72,7 +72,6 @@ if [ "$HTTP_STATUS" = "200" ]; then
   else
     echo "  ✓ インデックス '$INDEX_NAME' は既に存在するため、削除/再作成をスキップします"
     echo "    再作成する場合は RESET_AI_SEARCH=true を指定してください"
-    echo ""
   fi
 elif [ "$HTTP_STATUS" = "404" ]; then
   echo "  ✓ インデックス '$INDEX_NAME' は未作成のため新規作成します"

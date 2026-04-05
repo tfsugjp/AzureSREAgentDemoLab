@@ -99,6 +99,7 @@ if ($IndexExists -and $ResetAiSearch) {
 } elseif ($IndexExists) {
     Write-Host "  ✓ 既存インデックスを保持します (再作成しません)" -ForegroundColor Green
     Write-Host "    再作成する場合は RESET_AI_SEARCH=true を指定してください" -ForegroundColor Yellow
+    Write-Host ""
 }
 
 $ShouldCreateIndex = -not $IndexExists
@@ -115,8 +116,6 @@ if ($ShouldCreateIndex) {
         Write-Host "  ✗ インデックス作成に失敗しました: $($_.Exception.Message)" -ForegroundColor Red
         exit 1
     }
-} else {
-    Write-Host "  ✓ インデックス作成をスキップしました" -ForegroundColor Green
 }
 Write-Host ""
 
