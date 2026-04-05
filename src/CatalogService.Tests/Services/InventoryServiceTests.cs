@@ -65,7 +65,13 @@ public sealed class InventoryServiceTests
     public async Task UpdateAsync_ExistingItem_UpdatesAndReturns()
     {
         // Arrange
-        var existing = new InventoryItem { Id = "inv-1", ProductId = "prod-1", Quantity = 100 };
+        var existing = new InventoryItem
+        {
+            Id = "inv-1",
+            ProductId = "prod-1",
+            Quantity = 100,
+            UpdatedAt = DateTime.UtcNow.AddDays(-1)
+        };
         var updateData = new InventoryItem { Quantity = 200, ReorderThreshold = 20 };
         var updatedItem = new InventoryItem { Id = "inv-1", ProductId = "prod-1", Quantity = 200 };
 
@@ -94,6 +100,46 @@ public sealed class InventoryServiceTests
         Assert.AreEqual("inv-1", result.Id);
         Assert.AreEqual("inv-1", updateData.Id); // preserved from existing
         Assert.AreEqual("prod-1", updateData.ProductId); // preserved from existing
+    }
+
+    [TestMethod]
+    public async Task UpdateAsync_ExistingItem_RefreshesUpdatedAtAndUsesProductPartitionKey()
+    {
+        // Arrange
+        var existing = new InventoryItem
+        {
+            Id = "inv-1",
+            ProductId = "prod-1",
+            Quantity = 100,
+            UpdatedAt = DateTime.UtcNow.AddDays(-1)
+        };
+        var originalUpdatedAt = existing.UpdatedAt;
+        var updateData = new InventoryItem { Quantity = 200, ReorderThreshold = 20 };
+
+        var mockIterator = CosmosTestHelpers.CreateMockIterator(new[] { existing });
+        _mockContainer.Setup(c => c.GetItemQueryIterator<InventoryItem>(
+            It.IsAny<QueryDefinition>(),
+            It.IsAny<string>(),
+            It.IsAny<QueryRequestOptions>()))
+            .Returns(mockIterator.Object);
+
+        var mockResponse = CosmosTestHelpers.CreateMockItemResponse(updateData);
+        _mockContainer.Setup(c => c.ReplaceItemAsync(
+            updateData,
+            existing.Id,
+            It.Is<PartitionKey>(key => key.Equals(new PartitionKey(existing.ProductId))),
+            It.IsAny<ItemRequestOptions>(),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockResponse.Object);
+
+        // Act
+        var before = DateTime.UtcNow.AddSeconds(-1);
+        await _service.UpdateAsync(existing.ProductId, updateData);
+        var after = DateTime.UtcNow.AddSeconds(1);
+
+        // Assert
+        Assert.IsTrue(updateData.UpdatedAt > originalUpdatedAt);
+        Assert.IsTrue(updateData.UpdatedAt >= before && updateData.UpdatedAt <= after);
     }
 
     [TestMethod]

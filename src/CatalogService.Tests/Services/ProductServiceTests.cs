@@ -184,7 +184,13 @@ public sealed class ProductServiceTests
     public async Task DeleteAsync_ProductExists_SoftDeletesAndReturnsTrue()
     {
         // Arrange
-        var existing = new Product { Id = "prod-1", CategoryId = "cat-1", IsActive = true };
+        var existing = new Product
+        {
+            Id = "prod-1",
+            CategoryId = "cat-1",
+            IsActive = true,
+            UpdatedAt = DateTime.UtcNow.AddDays(-1)
+        };
         var mockIterator = CosmosTestHelpers.CreateMockIterator(new[] { existing });
         _mockContainer.Setup(c => c.GetItemQueryIterator<Product>(
             It.IsAny<QueryDefinition>(),
@@ -207,6 +213,44 @@ public sealed class ProductServiceTests
         // Assert
         Assert.IsTrue(result);
         Assert.IsFalse(existing.IsActive);
+    }
+
+    [TestMethod]
+    public async Task DeleteAsync_ProductExists_RefreshesUpdatedAt()
+    {
+        // Arrange
+        var existing = new Product
+        {
+            Id = "prod-1",
+            CategoryId = "cat-1",
+            IsActive = true,
+            UpdatedAt = DateTime.UtcNow.AddDays(-1)
+        };
+        var originalUpdatedAt = existing.UpdatedAt;
+        var mockIterator = CosmosTestHelpers.CreateMockIterator(new[] { existing });
+        _mockContainer.Setup(c => c.GetItemQueryIterator<Product>(
+            It.IsAny<QueryDefinition>(),
+            It.IsAny<string>(),
+            It.IsAny<QueryRequestOptions>()))
+            .Returns(mockIterator.Object);
+
+        var mockResponse = CosmosTestHelpers.CreateMockItemResponse(existing);
+        _mockContainer.Setup(c => c.ReplaceItemAsync(
+            existing,
+            existing.Id,
+            It.Is<PartitionKey>(key => key.Equals(new PartitionKey(existing.CategoryId))),
+            It.IsAny<ItemRequestOptions>(),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockResponse.Object);
+
+        // Act
+        var before = DateTime.UtcNow.AddSeconds(-1);
+        await _service.DeleteAsync(existing.Id);
+        var after = DateTime.UtcNow.AddSeconds(1);
+
+        // Assert
+        Assert.IsTrue(existing.UpdatedAt > originalUpdatedAt);
+        Assert.IsTrue(existing.UpdatedAt >= before && existing.UpdatedAt <= after);
     }
 
     [TestMethod]

@@ -162,6 +162,40 @@ public sealed class OrderServiceTests
         Assert.AreEqual("existing-id", order.Id);
     }
 
+    [TestMethod]
+    public async Task CreateAsync_ValidOrder_SetsTimestampsAndUsesUserPartitionKey()
+    {
+        // Arrange
+        var order = new Order
+        {
+            UserId = "user-1",
+            Items =
+            [
+                new OrderItem { Quantity = 2, UnitPrice = 10m },
+                new OrderItem { Quantity = 1, UnitPrice = 5m }
+            ]
+        };
+        var createdOrder = new Order { Id = "created-order", UserId = "user-1", TotalAmount = 25m };
+        var mockResponse = CosmosTestHelpers.CreateMockItemResponse(createdOrder);
+        _mockContainer.Setup(c => c.CreateItemAsync(
+            order,
+            It.Is<PartitionKey>(key => key.Equals(new PartitionKey(order.UserId))),
+            It.IsAny<ItemRequestOptions>(),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockResponse.Object);
+
+        // Act
+        var before = DateTime.UtcNow.AddSeconds(-1);
+        var result = await _service.CreateAsync(order);
+        var after = DateTime.UtcNow.AddSeconds(1);
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.AreEqual(25m, order.TotalAmount);
+        Assert.IsTrue(order.CreatedAt >= before && order.CreatedAt <= after);
+        Assert.IsTrue(order.UpdatedAt >= before && order.UpdatedAt <= after);
+    }
+
     // ─── UpdateStatusAsync ────────────────────────────────────────────────────
 
     [TestMethod]
@@ -205,7 +239,13 @@ public sealed class OrderServiceTests
     public async Task UpdateStatusAsync_ValidTransition_UpdatesStatusAndReturns()
     {
         // Arrange - Pending → Confirmed is a valid transition
-        var order = new Order { Id = "order-1", UserId = "user-1", Status = OrderStatus.Pending };
+        var order = new Order
+        {
+            Id = "order-1",
+            UserId = "user-1",
+            Status = OrderStatus.Pending,
+            UpdatedAt = DateTime.UtcNow.AddDays(-1)
+        };
         var updatedOrder = new Order { Id = "order-1", UserId = "user-1", Status = OrderStatus.Confirmed };
 
         SetupQueryIterator(new[] { order });
@@ -225,6 +265,42 @@ public sealed class OrderServiceTests
         // Assert
         Assert.IsNotNull(result);
         Assert.AreEqual(OrderStatus.Confirmed, result.Status);
+    }
+
+    [TestMethod]
+    public async Task UpdateStatusAsync_ValidTransition_RefreshesUpdatedAtAndUsesUserPartitionKey()
+    {
+        // Arrange
+        var order = new Order
+        {
+            Id = "order-1",
+            UserId = "user-1",
+            Status = OrderStatus.Pending,
+            UpdatedAt = DateTime.UtcNow.AddDays(-1)
+        };
+        var originalUpdatedAt = order.UpdatedAt;
+        var updatedOrder = new Order { Id = "order-1", UserId = "user-1", Status = OrderStatus.Confirmed };
+
+        SetupQueryIterator(new[] { order });
+
+        var mockResponse = CosmosTestHelpers.CreateMockItemResponse(updatedOrder);
+        _mockContainer.Setup(c => c.ReplaceItemAsync(
+            order,
+            order.Id,
+            It.Is<PartitionKey>(key => key.Equals(new PartitionKey(order.UserId))),
+            It.IsAny<ItemRequestOptions>(),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockResponse.Object);
+
+        // Act
+        var before = DateTime.UtcNow.AddSeconds(-1);
+        await _service.UpdateStatusAsync(order.Id, OrderStatus.Confirmed);
+        var after = DateTime.UtcNow.AddSeconds(1);
+
+        // Assert
+        Assert.AreEqual(OrderStatus.Confirmed, order.Status);
+        Assert.IsTrue(order.UpdatedAt > originalUpdatedAt);
+        Assert.IsTrue(order.UpdatedAt >= before && order.UpdatedAt <= after);
     }
 
     [TestMethod]

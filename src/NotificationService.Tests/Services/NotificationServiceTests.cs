@@ -122,13 +122,55 @@ public sealed class NotificationServiceTests
         Assert.IsTrue(notification.CreatedAt >= before && notification.CreatedAt <= after);
     }
 
+    [TestMethod]
+    public async Task CreateAsync_ValidNotification_UsesUserPartitionKey()
+    {
+        // Arrange
+        var notification = new Notification
+        {
+            UserId = "user-1",
+            Title = "Order Confirmed",
+            Type = NotificationType.OrderConfirmation,
+            RelatedEntityId = "order-123"
+        };
+        var created = new Notification
+        {
+            Id = "n-new",
+            UserId = "user-1",
+            Title = "Order Confirmed",
+            Type = NotificationType.OrderConfirmation,
+            RelatedEntityId = "order-123"
+        };
+        var mockResponse = CosmosTestHelpers.CreateMockItemResponse(created);
+        _mockContainer.Setup(c => c.CreateItemAsync(
+            notification,
+            It.Is<PartitionKey>(key => key.Equals(new PartitionKey(notification.UserId))),
+            It.IsAny<ItemRequestOptions>(),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockResponse.Object);
+
+        // Act
+        var result = await _service.CreateAsync(notification);
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.AreEqual(NotificationType.OrderConfirmation, result.Type);
+        Assert.AreEqual("order-123", result.RelatedEntityId);
+    }
+
     // ─── MarkAsReadAsync ──────────────────────────────────────────────────────
 
     [TestMethod]
     public async Task MarkAsReadAsync_NotificationExists_MarksAsReadAndReturns()
     {
         // Arrange
-        var notification = new Notification { Id = "n-1", UserId = "user-1", IsRead = false };
+        var notification = new Notification
+        {
+            Id = "n-1",
+            UserId = "user-1",
+            IsRead = false,
+            CreatedAt = DateTime.UtcNow.AddDays(-1)
+        };
         var readNotification = new Notification { Id = "n-1", UserId = "user-1", IsRead = true };
         SetupQueryIterator(new[] { notification });
 
@@ -148,6 +190,45 @@ public sealed class NotificationServiceTests
         Assert.IsNotNull(result);
         Assert.IsTrue(result.IsRead);
         Assert.IsTrue(notification.IsRead); // mutated before replace
+    }
+
+    [TestMethod]
+    public async Task MarkAsReadAsync_NotificationExists_PreservesCreatedAtAndUsesUserPartitionKey()
+    {
+        // Arrange
+        var notification = new Notification
+        {
+            Id = "n-1",
+            UserId = "user-1",
+            IsRead = false,
+            CreatedAt = DateTime.UtcNow.AddDays(-1)
+        };
+        var originalCreatedAt = notification.CreatedAt;
+        var readNotification = new Notification
+        {
+            Id = "n-1",
+            UserId = "user-1",
+            IsRead = true,
+            CreatedAt = originalCreatedAt
+        };
+        SetupQueryIterator(new[] { notification });
+
+        var mockResponse = CosmosTestHelpers.CreateMockItemResponse(readNotification);
+        _mockContainer.Setup(c => c.ReplaceItemAsync(
+            notification,
+            notification.Id,
+            It.Is<PartitionKey>(key => key.Equals(new PartitionKey(notification.UserId))),
+            It.IsAny<ItemRequestOptions>(),
+            It.IsAny<CancellationToken>()))
+            .ReturnsAsync(mockResponse.Object);
+
+        // Act
+        var result = await _service.MarkAsReadAsync(notification.Id);
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsTrue(notification.IsRead);
+        Assert.AreEqual(originalCreatedAt, notification.CreatedAt);
     }
 
     [TestMethod]
