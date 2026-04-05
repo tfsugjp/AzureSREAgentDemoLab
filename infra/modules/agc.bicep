@@ -16,7 +16,7 @@ param agcSubnetId string
 @description('Name for the user-assigned managed identity used by ALB Controller.')
 param albIdentityName string
 
-@description('Principal ID of the AKS cluster kubelet identity for RBAC.')
+@description('OIDC issuer URL of the AKS cluster for workload identity federation.')
 param aksOidcIssuerUrl string
 
 // User-assigned managed identity for ALB Controller workload identity
@@ -37,6 +37,18 @@ resource federatedCredential 'Microsoft.ManagedIdentity/userAssignedIdentities/f
       'api://AzureADTokenExchange'
     ]
   }
+}
+
+var agcVnetName = split(agcSubnetId, '/')[10]
+var agcSubnetName = split(agcSubnetId, '/')[12]
+
+resource agcVnet 'Microsoft.Network/virtualNetworks@2024-05-01' existing = {
+  name: agcVnetName
+}
+
+resource agcSubnet 'Microsoft.Network/virtualNetworks/subnets@2024-05-01' existing = {
+  name: agcSubnetName
+  parent: agcVnet
 }
 
 // Application Gateway for Containers (traffic controller)
@@ -90,9 +102,9 @@ var networkContributorRoleId = subscriptionResourceId(
   '4d97b98b-1d4f-4787-a291-c67834d212e7'
 )
 
-resource subnetNetworkContributorRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(agcSubnetId, albIdentity.id, 'network-contributor')
-  scope: association
+resource subnetJoinRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(agcSubnetId, albIdentity.id, 'subnet-join')
+  scope: agcSubnet
   properties: {
     roleDefinitionId: networkContributorRoleId
     principalId: albIdentity.properties.principalId
@@ -102,6 +114,7 @@ resource subnetNetworkContributorRole 'Microsoft.Authorization/roleAssignments@2
 
 output agcId string = agc.id
 output agcName string = agc.name
+output frontendName string = frontend.name
 output frontendFqdn string = frontend.properties.fqdn
 output albIdentityClientId string = albIdentity.properties.clientId
 output albIdentityPrincipalId string = albIdentity.properties.principalId

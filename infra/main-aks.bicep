@@ -65,6 +65,11 @@ var cosmosAccountName = take('cosmos-${envToken}-${uniqueToken}', 44)
 var agcName = take('agc-${envToken}-${uniqueToken}', 63)
 var agcFrontendName = take('fe-${envToken}-${uniqueToken}', 63)
 var albIdentityName = take('id-alb-${envToken}-${uniqueToken}', 128)
+var aksNodeResourceGroupName = take('rg-aksnodes-${envToken}-${uniqueToken}', 90)
+var readerRoleDefinitionId = subscriptionResourceId(
+  'Microsoft.Authorization/roleDefinitions',
+  'acdd72a7-3385-48ef-bd42-f606fba81ae7'
+)
 
 // ── Shared Resources ────────────────────────────────────────────
 
@@ -195,6 +200,7 @@ module aksCluster './modules/aks-cluster.bicep' = {
     systemNodeVmSize: aksNodeVmSize
     systemNodeCount: isProduction ? aksNodeCount : 2
     logAnalyticsWorkspaceId: logAnalyticsWorkspace.id
+    nodeResourceGroupName: aksNodeResourceGroupName
     enableAlbController: true
   }
 }
@@ -231,6 +237,16 @@ module agc './modules/agc.bicep' = {
   }
 }
 
+module albReaderOnNodeResourceGroup './modules/resource-group-role-assignment.bicep' = {
+  name: 'albReaderOnNodeResourceGroup'
+  scope: resourceGroup(subscription().subscriptionId, aksNodeResourceGroupName)
+  params: {
+    roleDefinitionId: readerRoleDefinitionId
+    principalId: agc.outputs.albIdentityPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 // ── Outputs ──────────────────────────────────────────────────────
 
 output AKS_CLUSTER_NAME string = aksCluster.outputs.clusterName
@@ -239,6 +255,7 @@ output ACR_NAME string = containerRegistry.name
 output ACR_LOGIN_SERVER string = containerRegistry.properties.loginServer
 output AGC_NAME string = agc.outputs.agcName
 output AGC_RESOURCE_ID string = agc.outputs.agcId
+output AGC_FRONTEND_NAME string = agc.outputs.frontendName
 output AGC_FRONTEND_FQDN string = agc.outputs.frontendFqdn
 output ALB_IDENTITY_CLIENT_ID string = agc.outputs.albIdentityClientId
 output APPLICATION_INSIGHTS_NAME string = applicationInsights.name

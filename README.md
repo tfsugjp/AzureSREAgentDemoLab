@@ -319,6 +319,7 @@ az deployment group show \
 | `AKS_CLUSTER_NAME` | AKS クラスター名 |
 | `ACR_LOGIN_SERVER` | ACR ログインサーバー |
 | `AGC_RESOURCE_ID` | Application Gateway for Containers リソース ID |
+| `AGC_FRONTEND_NAME` | Gateway から参照する AGC フロントエンド名 |
 | `AGC_FRONTEND_FQDN` | AGC フロントエンド FQDN |
 | `ALB_IDENTITY_CLIENT_ID` | ALB Controller 用マネージド ID |
 | `COSMOS_CONNECTION_STRING` | Cosmos DB 接続文字列 |
@@ -441,24 +442,29 @@ docker push acrglobalazuredemo.azurecr.io/notification-service:latest
 
 ### 4. ALB Controller のインストール
 
-Application Gateway for Containers の ALB Controller を AKS クラスターにインストールします。
+この Bicep は **BYO (Bring Your Own) の AGC リソース** と、ALB Controller 用の **User Assigned Managed Identity + Federated Credential + 必要 RBAC** まで作成します。AKS クラスター側には、Helm で ALB Controller をインストールします。
 
 ```bash
 # AKS クレデンシャルを取得
 AKS_NAME=$(az deployment group show -g rg-global-azure-demo -n main-aks --query properties.outputs.AKS_CLUSTER_NAME.value -o tsv)
+ALB_CLIENT_ID=$(az deployment group show -g rg-global-azure-demo -n main-aks --query properties.outputs.ALB_IDENTITY_CLIENT_ID.value -o tsv)
+
 az aks get-credentials --resource-group rg-global-azure-demo --name $AKS_NAME
 
-# Gateway API CRD をインストール
-kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+# Helm を利用して ALB Controller をインストール
+helm upgrade --install alb-controller oci://mcr.microsoft.com/application-lb/charts/alb-controller \
+  --namespace azure-alb-system \
+  --create-namespace \
+  --version 1.9.13 \
+  --set albController.namespace=azure-alb-system \
+  --set albController.podIdentity.clientID=$ALB_CLIENT_ID
 
-# ALB Controller アドオンを有効化 (AKS マネージドアドオン)
-az aks addon enable \
-  --resource-group rg-global-azure-demo \
-  --name $AKS_NAME \
-  --addon azure-application-gateway-for-containers
+# インストール確認
+kubectl get pods -n azure-alb-system
+kubectl get gatewayclass azure-alb-external -o yaml
 ```
 
-> 詳細は [ALB Controller クイックスタート](https://learn.microsoft.com/azure/application-gateway/for-containers/quickstart-deploy-application-gateway-for-containers-alb-controller-addon) を参照してください。
+> 詳細は [ALB Controller (Helm) クイックスタート](https://learn.microsoft.com/azure/application-gateway/for-containers/quickstart-deploy-application-gateway-for-containers-alb-controller-helm) を参照してください。
 
 ### 5. Kubernetes デプロイ
 
@@ -474,15 +480,21 @@ kubectl apply -f k8s/notification-service.yaml
 
 ### 6. Gateway API リソースのデプロイ
 
-`k8s/gateway.yaml` の `<AGC_RESOURCE_ID>` を Bicep デプロイで出力された `AGC_RESOURCE_ID` に置き換えてから適用します。
+`k8s/gateway.yaml` の `<AGC_RESOURCE_ID>` と `<AGC_FRONTEND_NAME>` を Bicep デプロイで出力された値に置き換えてから適用します。
 
 ```bash
 # AGC リソース ID を取得
 AGC_ID=$(az deployment group show -g rg-global-azure-demo -n main-aks \
   --query properties.outputs.AGC_RESOURCE_ID.value -o tsv)
 
+# AGC フロントエンド名を取得
+AGC_FRONTEND_NAME=$(az deployment group show -g rg-global-azure-demo -n main-aks \
+  --query properties.outputs.AGC_FRONTEND_NAME.value -o tsv)
+
 # gateway.yaml のプレースホルダーを置換して適用
-sed "s|<AGC_RESOURCE_ID>|${AGC_ID}|g" k8s/gateway.yaml | kubectl apply -f -
+sed -e "s|<AGC_RESOURCE_ID>|${AGC_ID}|g" \
+    -e "s|<AGC_FRONTEND_NAME>|${AGC_FRONTEND_NAME}|g" \
+    k8s/gateway.yaml | kubectl apply -f -
 
 # HTTPRoute を適用
 kubectl apply -f k8s/httproutes.yaml

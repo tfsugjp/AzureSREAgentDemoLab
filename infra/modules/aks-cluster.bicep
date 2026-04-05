@@ -22,6 +22,9 @@ param systemNodeCount int = 2
 @description('Log Analytics workspace resource ID for monitoring.')
 param logAnalyticsWorkspaceId string
 
+@description('Name of the AKS node resource group.')
+param nodeResourceGroupName string
+
 @description('Whether to enable the ALB Controller add-on for Application Gateway for Containers.')
 param enableAlbController bool = true
 
@@ -34,6 +37,7 @@ resource aksCluster 'Microsoft.ContainerService/managedClusters@2025-01-01' = {
   }
   properties: {
     dnsPrefix: name
+    nodeResourceGroup: nodeResourceGroupName
     kubernetesVersion: kubernetesVersion != '' ? kubernetesVersion : null
     networkProfile: {
       networkPlugin: 'azure'
@@ -85,3 +89,4 @@ output clusterFqdn string = aksCluster.properties.fqdn
 output kubeletIdentityObjectId string = aksCluster.properties.identityProfile.kubeletidentity.objectId
 output clusterIdentityPrincipalId string = aksCluster.identity.principalId
 output oidcIssuerUrl string = aksCluster.properties.oidcIssuerProfile.issuerURL
+output nodeResourceGroupName string = nodeResourceGroupName

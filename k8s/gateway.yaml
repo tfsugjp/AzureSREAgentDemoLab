@@ -14,3 +14,6 @@ spec:
       allowedRoutes:
         namespaces:
           from: Same
+  addresses:
+    - type: alb.networking.azure.io/alb-frontend
+      value: <AGC_FRONTEND_NAME>
