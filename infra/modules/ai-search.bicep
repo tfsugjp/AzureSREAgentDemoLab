@@ -15,7 +15,7 @@ param sku string = 'free'
 @description('Tags to apply to the resource.')
 param tags object = {}
 
-resource searchService 'Microsoft.Search/searchServices@2024-06-01-preview' = {
+resource searchService 'Microsoft.Search/searchServices@2024-06-01' = {
   name: name
   location: location
   tags: tags
