@@ -1,6 +1,5 @@
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using OrderService.Services;
 using SharedLibrary.Models;

@@ -18,15 +18,9 @@ public class ProductSearchService : IProductSearchService
     {
         _logger.LogInformation("Searching products with query: {Query}", query);
 
-        // BUG: When query is too long, this will throw ArgumentOutOfRangeException
-        // simulating an unhandled edge case
-        if (query.Length > 100)
+        if (query.Length > 200)
         {
-            // Intentional: developer assumed query would always be reasonable length
-            // and used Substring without proper bounds checking in the "optimization" below
-            var truncated = query.Substring(0, 100);
-            var remaining = query.Substring(100, 100); // BUG: will throw if query.Length < 200
-            query = truncated + remaining;
+            query = query[..200];
         }
 
         // Normal path - works fine for most queries

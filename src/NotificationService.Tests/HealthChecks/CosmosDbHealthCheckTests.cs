@@ -27,10 +27,9 @@ public class CosmosDbHealthCheckTests
     [TestMethod]
     public async Task CheckHealthAsync_WhenCosmosDbReachable_ReturnsHealthy()
     {
-        var accountProperties = CreateAccountProperties();
         _mockCosmosClient
             .Setup(c => c.ReadAccountAsync())
-            .ReturnsAsync(accountProperties);
+            .ReturnsAsync((AccountProperties)null!);
 
         var result = await _healthCheck.CheckHealthAsync(_context);
 
@@ -63,15 +62,5 @@ public class CosmosDbHealthCheckTests
         var result = await _healthCheck.CheckHealthAsync(_context);
 
         Assert.AreEqual(HealthStatus.Unhealthy, result.Status);
-    }
-
-    private static AccountProperties CreateAccountProperties()
-    {
-        var ctor = typeof(AccountProperties).GetConstructor(
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
-            null, Type.EmptyTypes, null);
-        return ctor is not null
-            ? (AccountProperties)ctor.Invoke(null)
-            : null!;
     }
 }

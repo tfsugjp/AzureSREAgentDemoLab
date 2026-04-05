@@ -63,34 +63,56 @@ public sealed class ProductSearchServiceTests
     }
 
     [TestMethod]
-    public async Task SearchAsync_QueryBetween100And199Chars_ThrowsArgumentOutOfRangeException()
+    public async Task SearchAsync_QueryBetween100And199Chars_SearchesWithoutThrowing()
     {
-        // Arrange - query exactly 150 chars (>100 but <200) triggers the substring bug
-        var query = new string('a', 150);
-
-        // Act & Assert - the bug: query.Substring(100, 100) throws when length is 150
-        await Assert.ThrowsExceptionAsync<ArgumentOutOfRangeException>(
-            async () => await _service.SearchAsync(query));
-    }
-
-    [TestMethod]
-    public async Task SearchAsync_QueryOver200Chars_TruncatesAndSearches()
-    {
-        // Arrange - query >= 200 chars does NOT throw (BUG path executes fully)
-        var query = new string('a', 200);
+        // Arrange
+        var query = new string('A', 150);
+        QueryDefinition? capturedQueryDefinition = null;
         var products = new List<Product> { new() { Id = "1", Name = "test" } };
         var mockIterator = CosmosTestHelpers.CreateMockIterator(products);
         _mockContainer.Setup(c => c.GetItemQueryIterator<Product>(
             It.IsAny<QueryDefinition>(),
             It.IsAny<string>(),
             It.IsAny<QueryRequestOptions>()))
+            .Callback<QueryDefinition, string, QueryRequestOptions>((queryDefinition, _, _) =>
+                capturedQueryDefinition = queryDefinition)
             .Returns(mockIterator.Object);
 
         // Act
         var result = await _service.SearchAsync(query);
 
-        // Assert - query truncated to first 200 chars
+        // Assert
         Assert.AreEqual(1, result.Count());
+        Assert.IsNotNull(capturedQueryDefinition);
+        var queryParameter = capturedQueryDefinition.GetQueryParameters().Single();
+        Assert.AreEqual(query.ToLowerInvariant(), queryParameter.Value);
+    }
+
+    [TestMethod]
+    public async Task SearchAsync_QueryOver200Chars_TruncatesAndSearches()
+    {
+        // Arrange
+        var query = new string('A', 201);
+        var expectedTruncatedQuery = new string('a', 200);
+        QueryDefinition? capturedQueryDefinition = null;
+        var products = new List<Product> { new() { Id = "1", Name = "test" } };
+        var mockIterator = CosmosTestHelpers.CreateMockIterator(products);
+        _mockContainer.Setup(c => c.GetItemQueryIterator<Product>(
+            It.IsAny<QueryDefinition>(),
+            It.IsAny<string>(),
+            It.IsAny<QueryRequestOptions>()))
+            .Callback<QueryDefinition, string, QueryRequestOptions>((queryDefinition, _, _) =>
+                capturedQueryDefinition = queryDefinition)
+            .Returns(mockIterator.Object);
+
+        // Act
+        var result = await _service.SearchAsync(query);
+
+        // Assert
+        Assert.AreEqual(1, result.Count());
+        Assert.IsNotNull(capturedQueryDefinition);
+        var queryParameter = capturedQueryDefinition.GetQueryParameters().Single();
+        Assert.AreEqual(expectedTruncatedQuery, queryParameter.Value);
     }
 
     [TestMethod]
