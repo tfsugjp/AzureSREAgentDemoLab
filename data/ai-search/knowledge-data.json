@@ -1,0 +1,224 @@
+{
+  "value": [
+    {
+      "@search.action": "upload",
+      "id": "kb-001",
+      "title": "CatalogService 商品検索のレスポンス遅延 (Premium 検索パス)",
+      "category": "troubleshooting",
+      "content": "## 症状\nCatalogService の商品検索エンドポイント GET /api/products/search?q=premium にリクエストすると、レスポンスが数秒以上かかる。通常の検索クエリは 100ms 以内に返却されるが、premium を含むクエリのみ顕著に遅延する。\n\n## 根本原因\nProductSearchService.cs 内の検索ロジックにおいて、クエリ文字列に \"premium\" が含まれる場合、専用の検索パスが実行される。この検索パスでは以下の問題がある:\n1. 全商品を Cosmos DB から一括取得するアンチパターン (SELECT * FROM c WHERE c.isActive = true)\n2. 取得した各商品に対して Thread.Sleep(100) を呼び出し、同期的にスレッドをブロックしている\n3. async/await パターンではなく同期処理を使用しているため、スレッドプール枯渇を引き起こす\n\n## 影響範囲\n- CatalogService の /api/products/search エンドポイント\n- premium を含むクエリのみ影響\n- 高負荷時にはスレッドプール枯渇により他のリクエストにも波及\n\n## 対処方法\n1. 即時対応: premium 検索のトラフィックを制限するレートリミットを設定\n2. 恒久対応: Thread.Sleep(100) を await Task.Delay(100) に置換、または外部サービス呼び出しの模擬処理を削除\n3. 恒久対応: 全商品一括取得をやめ、Cosmos DB のクエリで直接フィルタリングする\n\n## 確認コマンド\n```bash\ncurl -w '\\nTotal: %{time_total}s\\n' http://localhost:5001/api/products/search?q=premium\ncurl -w '\\nTotal: %{time_total}s\\n' http://localhost:5001/api/products/search?q=wireless\n```\n\n## 関連ログ\n検索実行時に以下のログが出力される:\n- \"Searching products with query: premium\"\n- \"Performing premium product search with enhanced filtering\"",
+      "service": "CatalogService",
+      "severity": "high",
+      "tags": ["performance", "thread-pool", "search", "premium", "latency"],
+      "lastUpdated": "2026-04-01T00:00:00Z"
+    },
+    {
+      "@search.action": "upload",
+      "id": "kb-002",
+      "title": "CatalogService 長いクエリ文字列による HTTP 500 エラー",
+      "category": "troubleshooting",
+      "content": "## 症状\nCatalogService の商品検索エンドポイント GET /api/products/search で、クエリパラメータ q の文字数が 100 文字を超えると HTTP 500 Internal Server Error が発生する。\n\n## 根本原因\nProductSearchService.cs の SearchAsync メソッドにおいて、クエリ長が 100 文字を超えた場合の処理に String.Substring の境界チェックバグが存在する。具体的には:\n1. query.Substring(0, 100) で先頭100文字を切り出し\n2. query.Substring(100, 100) で次の100文字を切り出そうとする\n3. クエリが 200 文字未満の場合、2番目の Substring で ArgumentOutOfRangeException がスローされる\n\n## 影響範囲\n- CatalogService の /api/products/search エンドポイント\n- クエリ文字列が 100 文字を超え 200 文字未満のリクエスト\n\n## 対処方法\n1. 即時対応: API Gateway またはリバースプロキシでクエリ文字列の長さを制限\n2. 恒久対応: Substring の境界チェックを修正し、適切な文字列トランケーション処理に置換\n3. 推奨: クエリ文字列のバリデーションをエンドポイント層で実施し、過度に長いクエリは 400 Bad Request で拒否\n\n## 再現コマンド\n```bash\ncurl -s -o /dev/null -w '%{http_code}' \"http://localhost:5001/api/products/search?q=$(python3 -c 'print(\"a\"*150)')\"\n```\n\n## 関連ログ\nスタックトレースに System.ArgumentOutOfRangeException が含まれる。",
+      "service": "CatalogService",
+      "severity": "high",
+      "tags": ["error", "500", "search", "validation", "substring"],
+      "lastUpdated": "2026-04-01T00:00:00Z"
+    },
+    {
+      "@search.action": "upload",
+      "id": "kb-003",
+      "title": "Cosmos DB 接続エラーのトラブルシューティング",
+      "category": "troubleshooting",
+      "content": "## 症状\n各マイクロサービス (CatalogService, OrderService, NotificationService) の起動時またはリクエスト処理時に Cosmos DB への接続エラーが発生する。エラーメッセージに Microsoft.Azure.Cosmos.CosmosException が含まれる。\n\n## 考えられる原因\n1. Cosmos DB アカウントの接続文字列が正しく設定されていない\n2. ネットワーク接続の問題 (ファイアウォール、VNet 設定)\n3. Cosmos DB アカウントが存在しない、または削除されている\n4. Serverless 容量モードで RU 制限に達している\n5. Cosmos DB のデータベースまたはコンテナが未作成\n\n## 確認手順\n1. 環境変数 CosmosDb__ConnectionString が正しいか確認\n2. Azure Portal で Cosmos DB アカウントのステータスを確認\n3. ネットワーク設定でパブリックアクセスが有効か確認\n4. データベース 'GlobalAzureDemo' と各コンテナ (categories, products, inventory, orders, notifications) の存在を確認\n\n## 対処方法\n- 接続文字列の修正: azd env set CosmosDb__ConnectionString '<正しい接続文字列>'\n- コンテナが存在しない場合: 各サービスの StartupInitializationService がコンテナを自動作成するため、サービスを再起動\n- RU 制限: Cosmos DB のメトリクスで 429 エラーを確認し、必要に応じて容量を増加\n\n## 関連設定\n- Bicep: infra/main.bicep の cosmosAccount リソース\n- アプリ設定: CosmosDb__ConnectionString, CosmosDb__DatabaseName 環境変数",
+      "service": "all",
+      "severity": "critical",
+      "tags": ["cosmos-db", "connection", "database", "infrastructure"],
+      "lastUpdated": "2026-04-01T00:00:00Z"
+    },
+    {
+      "@search.action": "upload",
+      "id": "kb-004",
+      "title": "Entra ID 認証エラーのトラブルシューティング",
+      "category": "troubleshooting",
+      "content": "## 症状\nAPI エンドポイントへのリクエストで HTTP 401 Unauthorized が返却される。\n\n## 考えられる原因\n1. JWT トークンが未設定または無効\n2. Entra ID アプリケーション登録が正しく構成されていない\n3. テナント ID、クライアント ID、Audience の設定不一致\n4. トークンの有効期限切れ\n5. disableAuthentication フラグが false (デフォルト) で、トークンなしでアクセス\n\n## 確認手順\n1. リクエストヘッダーに Authorization: Bearer <token> が含まれているか確認\n2. Azure Portal で Entra ID アプリケーション登録のステータスを確認\n3. 環境変数 ENTRA_TENANT_ID, ENTRA_CLIENT_ID, ENTRA_AUDIENCE の値を確認\n4. トークンのデコード (jwt.ms) で iss, aud クレームを確認\n\n## 対処方法\n- ワークショップ用の認証無効化: azd env set DISABLE_AUTHENTICATION true\n- アプリ登録の再作成: scripts/setup-entra-app.ps1 を実行\n- トークン再取得: az account get-access-token --resource <audience> コマンドを使用\n\n## 関連設定\n- Bicep: infra/modules/entra-app.bicep\n- スクリプト: scripts/setup-entra-app.ps1\n- ドキュメント: docs/entra-app-setup.md",
+      "service": "all",
+      "severity": "high",
+      "tags": ["authentication", "entra-id", "jwt", "401", "security"],
+      "lastUpdated": "2026-04-01T00:00:00Z"
+    },
+    {
+      "@search.action": "upload",
+      "id": "kb-005",
+      "title": "Container Apps のスケーリング問題",
+      "category": "troubleshooting",
+      "content": "## 症状\nContainer Apps のインスタンスが 0 にスケールダウンしたまま復帰しない、またはスケールアウトが遅延する。コールドスタートにより初回リクエストのレスポンスが大幅に遅延する。\n\n## 考えられる原因\n1. 非本番環境では minReplicas が 0 に設定されているため、アイドル時にインスタンスが 0 になる\n2. コンテナイメージのプルに時間がかかる (ACR から)\n3. .NET アプリケーションの起動時に Cosmos DB シードデータ投入が実行される\n4. ヘルスチェックのタイムアウト設定が短い\n\n## 確認手順\n1. Azure Portal で Container Apps のレプリカ数を確認\n2. Container Apps のログでスタートアップイベントを確認\n3. ACR からのイメージプルステータスを確認\n4. ヘルスチェックエンドポイント (/health, /health/ready) の応答を確認\n\n## 対処方法\n- 本番環境: environmentType を 'prod' に設定すると minReplicas が 1 になりコールドスタートを回避\n- 非本番環境: 必要に応じて minReplicas を手動で 1 に変更\n- ACR プル高速化: ACR の SKU を Basic から Standard に変更\n- シード処理の最適化: StartupInitializationService の初期化時間を短縮\n\n## 関連設定\n- Bicep: infra/main.bicep の minReplicas / maxReplicas 変数\n- Bicep: infra/modules/container-app.bicep のヘルスプローブ設定",
+      "service": "all",
+      "severity": "medium",
+      "tags": ["container-apps", "scaling", "cold-start", "performance"],
+      "lastUpdated": "2026-04-01T00:00:00Z"
+    },
+    {
+      "@search.action": "upload",
+      "id": "kb-006",
+      "title": "OpenTelemetry トレーシングデータが表示されない",
+      "category": "troubleshooting",
+      "content": "## 症状\nApplication Insights またはカスタム OTLP エンドポイントにトレーシングデータが表示されない。分散トレースが不完全、またはサービス間の呼び出しが追跡できない。\n\n## 考えられる原因\n1. Application Insights の接続文字列が正しく設定されていない\n2. OpenTelemetry SDK の初期化エラー\n3. Container Apps Environment の OpenTelemetry 設定が不適切\n4. OTLP エンドポイントへのネットワーク接続の問題\n5. サンプリング率の設定 (SamplingPercentage) により一部のトレースが欠落\n\n## 確認手順\n1. Application Insights リソースの接続文字列を確認\n2. Container Apps Environment の openTelemetryConfiguration を確認\n3. 各サービスのログで OpenTelemetry 初期化メッセージを確認\n4. Application Insights の Live Metrics でリアルタイムデータを確認\n\n## 対処方法\n- Application Insights 設定の確認: Azure Portal でリソースのプロパティから接続文字列をコピー\n- Container Apps の設定: logsConfiguration と tracesConfiguration の destinations が 'appInsights' に設定されていることを確認\n- サンプリング率: SamplingPercentage を 100 に設定して全トレースを収集 (デフォルト設定)\n- カスタム OTLP: openTelemetryEndpoint パラメータに正しいエンドポイント URL を設定\n\n## 関連設定\n- Bicep: infra/main.bicep の applicationInsights リソースと containerAppsEnvironment の openTelemetryConfiguration\n- アプリ: SharedLibrary 内の OpenTelemetry 構成",
+      "service": "all",
+      "severity": "medium",
+      "tags": ["opentelemetry", "tracing", "application-insights", "monitoring", "observability"],
+      "lastUpdated": "2026-04-01T00:00:00Z"
+    },
+    {
+      "@search.action": "upload",
+      "id": "kb-007",
+      "title": "OrderService 注文ステータス更新の失敗",
+      "category": "troubleshooting",
+      "content": "## 症状\nOrderService の PUT /api/orders/{id}/status エンドポイントで注文ステータスの更新が失敗する。HTTP 404 Not Found または HTTP 400 Bad Request が返却される。\n\n## 考えられる原因\n1. 指定された注文 ID が存在しない\n2. ステータス遷移が無効 (例: Delivered → Pending への逆遷移)\n3. Cosmos DB のパーティションキー (UserId) の不一致\n4. 注文がキャンセル済み (Cancelled ステータスからの遷移は不可)\n\n## 確認手順\n1. GET /api/orders/{id} で注文の現在のステータスを確認\n2. ステータス遷移の妥当性を確認: Pending → Confirmed → Processing → Shipped → Delivered\n3. Cosmos DB コンテナ 'orders' で該当ドキュメントを直接確認\n\n## 対処方法\n- 正しい注文 ID を使用してリクエストを再送\n- ステータス遷移ルールに従った更新を実施\n- キャンセル済み注文は新規注文として作成し直す\n\n## 有効なステータス遷移\n- Pending → Confirmed, Cancelled\n- Confirmed → Processing, Cancelled\n- Processing → Shipped\n- Shipped → Delivered\n- Delivered, Cancelled → (遷移不可)",
+      "service": "OrderService",
+      "severity": "medium",
+      "tags": ["order", "status", "api", "validation"],
+      "lastUpdated": "2026-04-01T00:00:00Z"
+    },
+    {
+      "@search.action": "upload",
+      "id": "kb-008",
+      "title": "NotificationService 通知配信の遅延・欠落",
+      "category": "troubleshooting",
+      "content": "## 症状\nNotificationService で作成した通知が GET /api/notifications?userId={userId} で取得できない、または通知の配信に遅延が生じる。\n\n## 考えられる原因\n1. Cosmos DB のインデキシングポリシーによる遅延 (Eventual Consistency)\n2. パーティションキー (UserId) の指定ミス\n3. Cosmos DB の Serverless モードでの一時的なスロットリング\n4. 通知の IsRead フィルタリングの問題\n\n## 確認手順\n1. POST /api/notifications で通知作成時のレスポンスを確認 (201 Created が返却されるか)\n2. Cosmos DB のメトリクスで 429 (Too Many Requests) エラーを確認\n3. 通知の userId が正しいか確認\n4. Cosmos DB コンテナ 'notifications' のインデキシングポリシーを確認\n\n## 対処方法\n- Cosmos DB のコンシステンシーレベルを Session から Strong に変更 (読み取り直後の一貫性が必要な場合)\n- スロットリング発生時: リトライロジックの確認と適切なバックオフの実装\n- パーティションキーの確認: 通知作成と取得で同じ UserId を使用\n\n## API エンドポイント\n- POST /api/notifications - 通知作成\n- GET /api/notifications?userId={userId} - ユーザー別通知取得\n- PUT /api/notifications/{id}/read - 既読マーク",
+      "service": "NotificationService",
+      "severity": "medium",
+      "tags": ["notification", "delivery", "cosmos-db", "consistency"],
+      "lastUpdated": "2026-04-01T00:00:00Z"
+    },
+    {
+      "@search.action": "upload",
+      "id": "kb-009",
+      "title": "azd up デプロイメント失敗のトラブルシューティング",
+      "category": "troubleshooting",
+      "content": "## 症状\nazd up コマンドの実行が失敗する。プロビジョニングフェーズまたはデプロイフェーズでエラーが発生する。\n\n## プロビジョニングフェーズの一般的なエラー\n1. リソースプロバイダー未登録: Microsoft.App, Microsoft.DocumentDB, Microsoft.Search などのプロバイダーが未登録\n2. リソース名の競合: グローバルに一意な名前 (Cosmos DB, ACR) の重複\n3. クォータ制限: リージョンのリソースクォータ超過\n4. Entra ID 設定不足: ENTRA_TENANT_ID, ENTRA_CLIENT_ID, ENTRA_AUDIENCE が未設定\n\n## デプロイフェーズの一般的なエラー\n1. Docker ビルドエラー: Dockerfile のビルドコンテキスト不正\n2. ACR プッシュエラー: 認証エラーまたはネットワークタイムアウト\n3. Container Apps デプロイエラー: イメージ参照の不一致\n\n## 確認手順\n1. azd env get-values で現在の環境変数を確認\n2. Azure Portal でリソースグループのデプロイ履歴を確認\n3. az provider list --query \"[?registrationState=='NotRegistered']\" で未登録プロバイダーを確認\n\n## 対処方法\n- リソースプロバイダー登録: az provider register --namespace Microsoft.App\n- 環境変数設定: azd env set <KEY> <VALUE>\n- Entra ID 設定: scripts/setup-entra-app.ps1 を実行\n- リージョン変更: azd env set AZURE_LOCATION <別のリージョン>\n- クリーンアップ: azd down で既存リソースを削除後、azd up で再デプロイ\n\n## 前提条件\n- Azure CLI がインストール済みであること\n- Azure Developer CLI (azd) がインストール済みであること\n- Docker Desktop が実行中であること\n- .NET 10 SDK がインストール済みであること",
+      "service": "all",
+      "severity": "high",
+      "tags": ["deployment", "azd", "provisioning", "infrastructure"],
+      "lastUpdated": "2026-04-01T00:00:00Z"
+    },
+    {
+      "@search.action": "upload",
+      "id": "kb-010",
+      "title": "ヘルスチェックエンドポイントの監視と診断",
+      "category": "runbook",
+      "content": "## 概要\n各マイクロサービスは以下のヘルスチェックエンドポイントを公開している:\n- GET /health - 基本的なライブネスチェック\n- GET /health/ready - 依存サービス (Cosmos DB) を含むレディネスチェック\n\n## 監視方法\n### ライブネスチェック\nアプリケーションプロセスが応答可能かを確認。HTTP 200 が返却されればプロセスは正常。\n```bash\ncurl http://localhost:5001/health  # CatalogService\ncurl http://localhost:5002/health  # OrderService\ncurl http://localhost:5003/health  # NotificationService\n```\n\n### レディネスチェック\nアプリケーションがリクエスト処理可能かを確認。Cosmos DB への接続を含む。\n```bash\ncurl http://localhost:5001/health/ready  # CatalogService\ncurl http://localhost:5002/health/ready  # OrderService\ncurl http://localhost:5003/health/ready  # NotificationService\n```\n\n## Container Apps のプローブ設定\n- Startup Probe: /health, 初期遅延 5 秒、間隔 10 秒、失敗閾値 3\n- Liveness Probe: /health, 間隔 30 秒、失敗閾値 3\n- Readiness Probe: /health/ready, 間隔 15 秒、失敗閾値 3\n\n## 異常時の対応\n- ライブネスチェック失敗: コンテナが自動的に再起動される\n- レディネスチェック失敗: トラフィックがルーティングされなくなる。Cosmos DB 接続を確認\n- 両方失敗: コンテナのログを確認し、起動エラーの原因を特定",
+      "service": "all",
+      "severity": "low",
+      "tags": ["health-check", "monitoring", "liveness", "readiness", "container-apps"],
+      "lastUpdated": "2026-04-01T00:00:00Z"
+    },
+    {
+      "@search.action": "upload",
+      "id": "kb-011",
+      "title": "システムアーキテクチャ概要",
+      "category": "architecture",
+      "content": "## GlobalAzureDemo2026 アーキテクチャ\n\n### サービス構成\n本システムは 3 つのマイクロサービスで構成される:\n\n1. **CatalogService** (ポート 5001)\n   - 商品カタログ管理 (CRUD)\n   - カテゴリ管理\n   - 在庫管理\n   - 商品検索\n   - Cosmos DB コンテナ: categories, products, inventory\n\n2. **OrderService** (ポート 5002)\n   - 注文管理\n   - 注文ステータス追跡\n   - 注文キャンセル\n   - Cosmos DB コンテナ: orders\n\n3. **NotificationService** (ポート 5003)\n   - 通知配信\n   - 既読/未読管理\n   - Cosmos DB コンテナ: notifications\n\n### 共通コンポーネント (SharedLibrary)\n- Microsoft Entra ID JWT 認証\n- Cosmos DB 接続管理\n- OpenTelemetry 計装 (トレース、メトリクス、ログ)\n- Serilog 構造化ログ\n- 共通モデル定義\n\n### インフラストラクチャ\n- **コンピュート**: Azure Container Apps (または AKS + AGC)\n- **データベース**: Azure Cosmos DB (NoSQL API, Serverless)\n- **認証**: Microsoft Entra ID\n- **監視**: Application Insights + Log Analytics Workspace\n- **コンテナレジストリ**: Azure Container Registry\n- **検索**: Azure AI Search\n- **IaC**: Bicep (infra/main.bicep)\n- **デプロイ**: Azure Developer CLI (azd)",
+      "service": "all",
+      "severity": "low",
+      "tags": ["architecture", "overview", "microservices", "infrastructure"],
+      "lastUpdated": "2026-04-01T00:00:00Z"
+    },
+    {
+      "@search.action": "upload",
+      "id": "kb-012",
+      "title": "CatalogService API エンドポイント一覧",
+      "category": "reference",
+      "content": "## CatalogService API エンドポイント\n\n### 商品管理\n- GET /api/products - 全商品一覧取得\n- GET /api/products/{id} - 商品詳細取得\n- POST /api/products - 商品作成\n- PUT /api/products/{id} - 商品更新\n- DELETE /api/products/{id} - 商品削除\n\n### 商品検索\n- GET /api/products/search?q={query} - 商品検索\n  - 注意: q=premium は既知のパフォーマンス問題あり (kb-001 参照)\n  - 注意: q の長さが 100 文字超で HTTP 500 (kb-002 参照)\n\n### カテゴリ管理\n- GET /api/categories - 全カテゴリ一覧取得\n- GET /api/categories/{id} - カテゴリ詳細取得\n\n### 在庫管理\n- GET /api/inventory/{productId} - 在庫情報取得\n- PUT /api/inventory/{productId} - 在庫情報更新\n\n### ヘルスチェック\n- GET /health - ライブネスチェック\n- GET /health/ready - レディネスチェック\n\n### データモデル\n- Product: id, name, description, price, categoryId, categoryName, tags, imageUrl, isActive\n- Category: id, name, description\n- InventoryItem: id, productId, quantity, reservedQuantity, reorderThreshold\n\n### シードデータ\n- 5 カテゴリ: Electronics, Clothing, Food, Books, Premium\n- 20 商品 (各カテゴリ 4 商品)\n- 20 在庫アイテム",
+      "service": "CatalogService",
+      "severity": "low",
+      "tags": ["api", "endpoints", "catalog", "reference"],
+      "lastUpdated": "2026-04-01T00:00:00Z"
+    },
+    {
+      "@search.action": "upload",
+      "id": "kb-013",
+      "title": "OrderService API エンドポイント一覧",
+      "category": "reference",
+      "content": "## OrderService API エンドポイント\n\n### 注文管理\n- GET /api/orders - 全注文一覧取得\n- GET /api/orders/{id} - 注文詳細取得\n- GET /api/orders/user/{userId} - ユーザー別注文取得\n- POST /api/orders - 注文作成\n- PUT /api/orders/{id} - 注文更新\n- DELETE /api/orders/{id} - 注文削除\n- PUT /api/orders/{id}/status - ステータス更新\n- POST /api/orders/{id}/cancel - 注文キャンセル\n\n### ヘルスチェック\n- GET /health - ライブネスチェック\n- GET /health/ready - レディネスチェック\n\n### データモデル\n- Order: id, userId, status, shippingAddress, notes, items, totalAmount, createdAt, updatedAt\n- OrderItem: productId, productName, quantity, unitPrice\n- OrderStatus: Pending, Confirmed, Processing, Shipped, Delivered, Cancelled\n\n### ステータス遷移ルール\n- Pending → Confirmed, Cancelled\n- Confirmed → Processing, Cancelled\n- Processing → Shipped\n- Shipped → Delivered\n- Delivered, Cancelled → 遷移不可\n\n### シードデータ\n- 10 注文 (3 ユーザー分)\n- 各種ステータスの注文を含む",
+      "service": "OrderService",
+      "severity": "low",
+      "tags": ["api", "endpoints", "order", "reference"],
+      "lastUpdated": "2026-04-01T00:00:00Z"
+    },
+    {
+      "@search.action": "upload",
+      "id": "kb-014",
+      "title": "NotificationService API エンドポイント一覧",
+      "category": "reference",
+      "content": "## NotificationService API エンドポイント\n\n### 通知管理\n- GET /api/notifications - 全通知一覧取得\n- GET /api/notifications?userId={userId} - ユーザー別通知取得\n- GET /api/notifications/{id} - 通知詳細取得\n- POST /api/notifications - 通知作成\n- PUT /api/notifications/{id}/read - 既読マーク\n- DELETE /api/notifications/{id} - 通知削除\n\n### ヘルスチェック\n- GET /health - ライブネスチェック\n- GET /health/ready - レディネスチェック\n\n### データモデル\n- Notification: id, userId, title, message, type, isRead, relatedEntityId, createdAt\n- NotificationType: OrderConfirmation, ShipmentUpdate, Promotion, Info, Alert\n\n### シードデータ\n- 15 通知 (3 ユーザー分)\n- 注文確認、出荷通知、プロモーション、情報、アラートの各種タイプを含む",
+      "service": "NotificationService",
+      "severity": "low",
+      "tags": ["api", "endpoints", "notification", "reference"],
+      "lastUpdated": "2026-04-01T00:00:00Z"
+    },
+    {
+      "@search.action": "upload",
+      "id": "kb-015",
+      "title": "Container Apps ログの収集と分析",
+      "category": "runbook",
+      "content": "## 概要\n各サービスのログは Container Apps Environment 経由で Azure Monitor (Log Analytics Workspace) に送信される。\n\n## ログの確認方法\n\n### Azure Portal\n1. Azure Portal で該当の Container Apps リソースを開く\n2. [監視] → [ログ] を選択\n3. KQL クエリを使用してログを検索\n\n### KQL クエリ例\n```kql\n// CatalogService のエラーログ\nContainerAppConsoleLogs_CL\n| where ContainerAppName_s startswith 'ca-cat'\n| where Log_s contains 'Error' or Log_s contains 'Exception'\n| order by TimeGenerated desc\n| take 50\n\n// 特定の時間帯のリクエストログ\nContainerAppConsoleLogs_CL\n| where TimeGenerated > ago(1h)\n| where Log_s contains 'Searching products'\n| order by TimeGenerated desc\n\n// Container Apps のシステムログ\nContainerAppSystemLogs_CL\n| where ContainerAppName_s startswith 'ca-'\n| where Type_s == 'Error'\n| order by TimeGenerated desc\n| take 20\n```\n\n### Application Insights\nApplication Insights では以下のテレメトリデータが利用可能:\n- リクエスト: 各 API エンドポイントへのリクエスト情報\n- 依存関係: Cosmos DB への呼び出し情報\n- 例外: 未処理例外のスタックトレース\n- トレース: Serilog による構造化ログ\n\n## Serilog 構造化ログ\n各サービスは Serilog を使用して構造化ログを出力。キーとなるログプロパティ:\n- RequestPath: リクエストのパス\n- StatusCode: HTTP レスポンスコード\n- ElapsedMilliseconds: リクエスト処理時間\n- UserId: 認証済みユーザー ID",
+      "service": "all",
+      "severity": "low",
+      "tags": ["logging", "log-analytics", "kql", "application-insights", "serilog"],
+      "lastUpdated": "2026-04-01T00:00:00Z"
+    },
+    {
+      "@search.action": "upload",
+      "id": "kb-016",
+      "title": "CatalogService 在庫数不整合のトラブルシューティング",
+      "category": "troubleshooting",
+      "content": "## 症状\nCatalogService の在庫情報 (GET /api/inventory/{productId}) で返却される在庫数が実際の期待値と異なる。予約数 (reservedQuantity) が実際の注文数と一致しない。\n\n## 考えられる原因\n1. OrderService と CatalogService 間の在庫同期が手動のため、不整合が発生\n2. 同時更新による楽観的排他制御の競合\n3. シードデータの初期値と実際の注文状態の不一致\n4. Cosmos DB の結果整合性による一時的な不整合\n\n## 確認手順\n1. GET /api/inventory/{productId} で現在の在庫情報を取得\n2. GET /api/orders でその商品に関する注文を確認\n3. Cosmos DB の inventory コンテナで直接ドキュメントを確認\n4. reservedQuantity と実際の Pending/Processing 注文数を比較\n\n## 対処方法\n- 在庫の手動修正: PUT /api/inventory/{productId} で正しい値に更新\n- 再リコンシリエーション: 全注文を走査して reservedQuantity を再計算\n- 同時更新対策: Cosmos DB の ETag を使用した楽観的排他制御の実装を検討\n\n## シードデータの在庫\n- 20 商品に対し各 10〜500 個の初期在庫\n- 各商品に予約数 (1〜30) と再発注閾値 (5〜50) が設定済み",
+      "service": "CatalogService",
+      "severity": "medium",
+      "tags": ["inventory", "consistency", "data-integrity", "cosmos-db"],
+      "lastUpdated": "2026-04-01T00:00:00Z"
+    },
+    {
+      "@search.action": "upload",
+      "id": "kb-017",
+      "title": "Docker ビルドとローカル開発環境のトラブルシューティング",
+      "category": "troubleshooting",
+      "content": "## 症状\nDocker コンテナのビルドまたは docker-compose での起動が失敗する。\n\n## 一般的なエラーと対処\n\n### ビルドエラー: NuGet パッケージの復元失敗\n原因: ネットワーク接続の問題、またはプライベート NuGet フィードの認証エラー\n対処: docker build --no-cache で再ビルド、ネットワーク接続を確認\n\n### ビルドエラー: Dockerfile のコンテキスト不正\n原因: 各サービスの Dockerfile はルートディレクトリをコンテキストとして使用\n対処: docker build -f src/CatalogService/Dockerfile -t catalog . のようにルートからビルド\n\n### 起動エラー: ポート競合\n原因: ローカルの 5001, 5002, 5003 ポートが他のプロセスで使用中\n対処: netstat -tlnp | grep '500[1-3]' でポート使用状況を確認し、競合プロセスを停止\n\n### 起動エラー: Cosmos DB 接続失敗\n原因: ローカル環境に Cosmos DB エミュレータまたは接続文字列が未設定\n対処: Azure Cosmos DB Emulator を起動、または Azure 上の Cosmos DB 接続文字列を環境変数に設定\n\n## ローカル開発コマンド\n```bash\n# ソリューション全体のビルド\ndotnet build GlobalAzureDemo2026.slnx\n\n# Docker Compose でのローカル起動\ndocker-compose up --build\n\n# 個別サービスの起動\ncd src/CatalogService && dotnet run\n```",
+      "service": "all",
+      "severity": "medium",
+      "tags": ["docker", "local-development", "build", "troubleshooting"],
+      "lastUpdated": "2026-04-01T00:00:00Z"
+    },
+    {
+      "@search.action": "upload",
+      "id": "kb-018",
+      "title": "ACR (Azure Container Registry) イメージプル失敗",
+      "category": "troubleshooting",
+      "content": "## 症状\nContainer Apps がコンテナイメージを ACR からプルできない。Container Apps のリビジョンが Failed 状態になる。\n\n## 考えられる原因\n1. ACR Pull ロール割り当てが正しく設定されていない\n2. Container Apps のマネージド ID が無効\n3. ACR の管理者ユーザーが無効 (設計上、adminUserEnabled: false)\n4. イメージタグが存在しない\n5. ACR のネットワーク設定でアクセスがブロックされている\n\n## 確認手順\n1. Azure Portal で ACR のアクセス制御 (IAM) を確認\n2. Container Apps のシステムマネージド ID が有効か確認\n3. ACR のリポジトリでイメージの存在を確認\n4. Container Apps のシステムログでイメージプルエラーの詳細を確認\n\n## 対処方法\n- ロール割り当て確認: main.bicep の catalogAcrPull, orderAcrPull, notificationAcrPull リソースが正しく作成されていることを確認\n- マネージド ID: container-app.bicep の identity 設定で systemAssigned が有効であることを確認\n- イメージ再プッシュ: azd deploy で最新イメージを ACR にプッシュ\n- ACR ネットワーク: publicNetworkAccess が 'Enabled' に設定されていることを確認\n\n## 関連設定\n- Bicep: infra/main.bicep の containerRegistry リソースと各 AcrPull ロール割り当て\n- Bicep: infra/modules/container-app.bicep の registryServer パラメータ",
+      "service": "all",
+      "severity": "high",
+      "tags": ["acr", "container-registry", "image-pull", "rbac", "managed-identity"],
+      "lastUpdated": "2026-04-01T00:00:00Z"
+    },
+    {
+      "@search.action": "upload",
+      "id": "kb-019",
+      "title": "スレッドプール枯渇の検知と対処",
+      "category": "runbook",
+      "content": "## 概要\nCatalogService の Premium 検索パスで Thread.Sleep を使用した同期ブロッキングが発生すると、.NET スレッドプールの枯渇を引き起こす可能性がある。\n\n## 検知方法\n\n### Application Insights メトリクス\n- リクエストの平均応答時間が急増 (通常 < 100ms → 数秒以上)\n- 同時リクエスト数の減少 (スレッド枯渇により新規リクエストを受け付けられない)\n- 依存関係呼び出しのタイムアウト増加\n\n### ログベースの検知\n- \"Performing premium product search with enhanced filtering\" ログの出現頻度が高い\n- ThreadPool.GetAvailableThreads で利用可能スレッド数が減少\n\n### 外形監視\n- ヘルスチェック /health のレスポンスタイムが増加\n- /health/ready が timeout する\n\n## 即時対処\n1. premium 検索パスへのトラフィックを一時的にブロック (API Gateway ルール)\n2. Container Apps のインスタンス数を手動でスケールアウト\n3. CatalogService のコンテナを再起動 (根本対処ではない)\n\n## 恒久対処\n1. Thread.Sleep(100) を await Task.Delay(100) に変更\n2. 全商品一括取得を Cosmos DB クエリでの直接フィルタリングに変更\n3. 非同期パターンの徹底適用\n\n## 関連ナレッジ\n- kb-001: CatalogService 商品検索のレスポンス遅延 (Premium 検索パス)",
+      "service": "CatalogService",
+      "severity": "high",
+      "tags": ["thread-pool", "performance", "blocking", "async", "runbook"],
+      "lastUpdated": "2026-04-01T00:00:00Z"
+    },
+    {
+      "@search.action": "upload",
+      "id": "kb-020",
+      "title": "Cosmos DB パーティションキー設計とクエリパフォーマンス",
+      "category": "reference",
+      "content": "## パーティションキー設計\n\n### 各コンテナのパーティションキー\n| コンテナ | パーティションキー | 説明 |\n|----------|---------------------|------|\n| categories | /id | カテゴリ ID |\n| products | /categoryId | カテゴリ ID でパーティショニング |\n| inventory | /productId | 商品 ID でパーティショニング |\n| orders | /userId | ユーザー ID でパーティショニング |\n| notifications | /userId | ユーザー ID でパーティショニング |\n\n### クエリパフォーマンスの考慮事項\n- パーティションキーを指定したクエリは単一パーティションで実行され効率的\n- パーティションキーを指定しないクエリはクロスパーティションクエリとなり、全パーティションをスキャンするため非効率\n- products コンテナの検索 (GET /api/products/search) はクロスパーティションクエリを使用\n\n### Serverless モードの制約\n- リクエストあたり最大 5,000 RU\n- ストレージ最大 1 TB\n- SLA は Standard アカウントと異なる\n- 長時間のアイドル後にコールドスタートが発生する可能性\n\n### パフォーマンス最適化\n1. クエリにパーティションキーを含める\n2. 読み取り負荷の高いワークロードでは Session 一貫性で十分\n3. 不要なプロパティの SELECT を避け、必要なプロパティのみを射影\n4. Cosmos DB のメトリクスで RU 消費量を監視",
+      "service": "all",
+      "severity": "low",
+      "tags": ["cosmos-db", "partition-key", "query-performance", "serverless"],
+      "lastUpdated": "2026-04-01T00:00:00Z"
+    }
+  ]
+}

@@ -5,6 +5,14 @@ infra:
   provider: bicep
   path: infra
   module: main
+hooks:
+  postprovision:
+    windows:
+      shell: pwsh
+      run: scripts/setup-ai-search.ps1
+    posix:
+      shell: bash
+      run: scripts/setup-ai-search.sh
 services:
   catalog:
     resourceName: ${CATALOG_SERVICE_NAME}
