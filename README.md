@@ -127,7 +127,7 @@ graph TB
 
 ## ローカル開発
 
-### 前提条件
+### Azure デプロイ前提条件
 
 - .NET 10 SDK
 - Docker Desktop
@@ -164,6 +164,117 @@ dotnet run --project src/NotificationService
 ```bash
 dotnet build GlobalAzureDemo2026.slnx
 ```
+
+## Azure Developer CLI + Bicep デプロイ
+
+このリポジトリには、**教育用途で複数環境へ繰り返しデプロイできる** Azure Developer CLI (`azd`) + Bicep 構成が含まれています。
+
+### 生成される Azure リソース
+
+- Azure Container Apps Environment
+- Azure Container Apps x 3
+  - Catalog
+  - Order
+  - Notification
+- Azure Container Registry (`Basic`)
+- Azure Cosmos DB for NoSQL (`EnableServerless`)
+- Cosmos SQL Database
+- Log Analytics Workspace
+- Application Insights
+
+### 設計方針
+
+- **コスト最適化優先**
+  - AKS ではなく Container Apps を使用
+  - 非 `prod` 環境は `minReplicas = 0`
+  - ACR は `Basic`
+  - Cosmos DB は `serverless`
+- **Private Endpoint は未使用**
+- **既定リージョンは `westus3`**
+  - IaC 側の既定値として `westus3` を使用
+  - `azd env new <env> -l westus3` で環境作成することを推奨
+- **複数環境対応**
+  - `AZURE_ENV_NAME` ベースでリソース名を分離
+  - `dev` / `test` / `prod` / `workshop-a` などを並行運用可能
+
+### 前提条件
+
+- Azure Developer CLI (`azd`)
+- Azure CLI (`az`)
+- Docker Desktop
+- .NET 10 SDK
+- Azure サブスクリプションへのアクセス
+
+### 環境ごとのセットアップ
+
+`azd` は環境ごとに `.azure/<environment-name>/.env` を作成します。
+
+まず環境を作成します。
+
+```bash
+azd env new dev -l westus3
+```
+
+次に、必須値を環境へ設定します。
+
+```bash
+azd env set ENTRA_TENANT_ID <your-tenant-id>
+azd env set ENTRA_CLIENT_ID <your-client-id>
+azd env set ENTRA_AUDIENCE api://<your-client-id>
+```
+
+必要に応じて追加設定も可能です。
+
+```bash
+azd env set ENVIRONMENT_TYPE dev
+azd env set DISABLE_AUTH false
+azd env set OPEN_TELEMETRY_ENDPOINT <optional-otlp-endpoint>
+```
+
+> 参考: ルートの `.env` は必須項目のメモです。実際に `azd` が読むのは `.azure/<environment-name>/.env` です。
+
+### デプロイ前の確認
+
+ローカル検証として以下は確認済みです。
+
+- `infra/main.bicep`: 診断エラーなし
+- `infra/modules/container-app.bicep`: 診断エラーなし
+- `dotnet build GlobalAzureDemo2026.slnx`: 成功
+
+ただし、Azure 側の事前確認には**実環境の Entra ID 値を設定した `azd` 環境**が必要です。
+
+### デプロイの流れ
+
+1. 環境を作成
+2. 必須の `azd env set` を投入
+3. Azure にサインイン
+4. デプロイを実行
+
+```bash
+az login
+azd up
+```
+
+### 環境を増やす例
+
+```bash
+azd env new test -l westus3
+azd env new prod -l westus3
+azd env new workshop-a -l westus3
+```
+
+各環境ごとに `.azure/<environment-name>/.env` が分離されるため、教育用途の並行検証に向いています。
+
+### 主要ファイル
+
+- `azure.yaml`
+  - `azd` のサービス定義
+- `infra/main.bicep`
+  - 共有 Azure リソース + 各サービスのデプロイ
+- `infra/modules/container-app.bicep`
+  - 各 API サービス用の共通 Container App モジュール
+- `infra/main.parameters.json`
+  - `azd` 環境変数から Bicep パラメータへ受け渡し
 
 ## AKS デプロイ
 
@@ -218,7 +329,7 @@ az ad app update --id $APP_ID --identifier-uris "api://${APP_ID}"
 Azure portal の **[アプリの登録] → [アプリ ロール] → [アプリ ロールの作成]** で以下の値を入力してください。
 
 | 項目 | 値 |
-|------|----|
+| ------ | ---- |
 | 表示名 | `Access GlobalAzureDemo API` |
 | 許可されるメンバーの種類 | `アプリケーション` |
 | 値 | `Api.Access` |
@@ -388,6 +499,7 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 ```
 
 > トークンなしでアクセスすると HTTP **401 Unauthorized** が返ります:
+>
 > ```bash
 > curl -o /dev/null -w "%{http_code}" http://$INGRESS_IP/catalog/api/products
 > # → 401
@@ -431,16 +543,20 @@ curl -s -o /dev/null -w "%{http_code}" \
 ### トリガー条件
 
 1. **スローダウン**: クエリパラメータ `q` に `premium` を含めてリクエスト
+
    ```bash
    curl http://localhost:5001/api/products/search?q=premium
    ```
+
    - 原因: `Thread.Sleep(100)` を含む同期ループで全商品を逐次処理
    - 結果: レスポンスタイムが数秒に膨張、スレッドプール枯渇
 
 2. **500エラー**: クエリパラメータ `q` に100文字を超える文字列を送信
+
    ```bash
    curl "http://localhost:5001/api/products/search?q=$(python3 -c 'print("a"*150)')"
    ```
+
    - 原因: `String.Substring` の境界チェック不備
    - 結果: `ArgumentOutOfRangeException` → HTTP 500
 
@@ -449,7 +565,7 @@ curl -s -o /dev/null -w "%{http_code}" \
 各サービス起動時に Cosmos DB へ自動投入:
 
 | データ | 件数 | 説明 |
-|--------|------|------|
+| ------ | ---- | ---- |
 | 商品 | 20 | 電子機器、衣料品、食品、書籍、プレミアム |
 | カテゴリ | 5 | Electronics, Clothing, Food, Books, Premium |
 | 在庫 | 20 | 各商品に対応 |

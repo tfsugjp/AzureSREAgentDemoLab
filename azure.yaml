@@ -1,0 +1,38 @@
+name: global-azure-demo2026
+metadata:
+  template: global-azure-demo2026@0.0.1
+infra:
+  provider: bicep
+  path: infra
+  module: main
+services:
+  catalog:
+    resourceName: ${CATALOG_SERVICE_NAME}
+    project: ./src/CatalogService
+    module: main
+    language: dotnet
+    host: containerapp
+    apiVersion: 2026-01-01
+    docker:
+      path: ./Dockerfile
+      context: ../..
+  order:
+    resourceName: ${ORDER_SERVICE_NAME}
+    project: ./src/OrderService
+    module: main
+    language: dotnet
+    host: containerapp
+    apiVersion: 2026-01-01
+    docker:
+      path: ./Dockerfile
+      context: ../..
+  notification:
+    resourceName: ${NOTIFICATION_SERVICE_NAME}
+    project: ./src/NotificationService
+    module: main
+    language: dotnet
+    host: containerapp
+    apiVersion: 2026-01-01
+    docker:
+      path: ./Dockerfile
+      context: ../..
