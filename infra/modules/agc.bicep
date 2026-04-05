@@ -16,7 +16,7 @@ param agcSubnetId string
 @description('Name for the user-assigned managed identity used by ALB Controller.')
 param albIdentityName string
 
-@description('OIDC issuer URL of the AKS cluster for workload identity federation.')
+@description('OIDC issuer URL of the AKS cluster used for the federated identity credential issuer.')
 param aksOidcIssuerUrl string
 
 // User-assigned managed identity for ALB Controller workload identity

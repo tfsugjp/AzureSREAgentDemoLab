@@ -293,6 +293,7 @@ az group create --name rg-global-azure-demo --location westus3
 
 # Bicep でインフラをデプロイ
 az deployment group create \
+  --name main-aks \
   --resource-group rg-global-azure-demo \
   --template-file infra/main-aks.bicep \
   --parameters \
@@ -322,7 +323,7 @@ az deployment group show \
 | `AGC_FRONTEND_NAME` | Gateway から参照する AGC フロントエンド名 |
 | `AGC_FRONTEND_FQDN` | AGC フロントエンド FQDN |
 | `ALB_IDENTITY_CLIENT_ID` | ALB Controller 用マネージド ID |
-| `COSMOS_CONNECTION_STRING` | Cosmos DB 接続文字列 |
+| `COSMOS_ACCOUNT_NAME` | Cosmos DB アカウント名 |
 
 ### 2. Entra ID アプリ登録
 
@@ -419,7 +420,11 @@ kubectl create secret generic entra-id-secret \
 
 kubectl create secret generic cosmos-db-secret \
   --namespace global-azure-demo \
-  --from-literal=ConnectionString="<YOUR_COSMOS_DB_CONNECTION_STRING>" \
+  --from-literal=ConnectionString="$(az cosmosdb keys list \
+    --name $(az deployment group show -g rg-global-azure-demo -n main-aks --query properties.outputs.COSMOS_ACCOUNT_NAME.value -o tsv) \
+    --resource-group rg-global-azure-demo \
+    --type connection-strings \
+    --query connectionStrings[0].connectionString -o tsv)" \
   --dry-run=client -o yaml | kubectl apply -f -
 ```
 
@@ -512,7 +517,7 @@ kubectl get httproute -n global-azure-demo
 # AGC フロントエンド FQDN を取得
 AGC_FQDN=$(az deployment group show -g rg-global-azure-demo -n main-aks \
   --query properties.outputs.AGC_FRONTEND_FQDN.value -o tsv)
-echo "Endpoint: https://${AGC_FQDN}"
+echo "Endpoint: http://${AGC_FQDN}"
 ```
 
 ## Entra ID 認証フロー (AKS 環境)

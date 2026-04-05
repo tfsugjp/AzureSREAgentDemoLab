@@ -201,7 +201,6 @@ module aksCluster './modules/aks-cluster.bicep' = {
     systemNodeCount: isProduction ? aksNodeCount : 2
     logAnalyticsWorkspaceId: logAnalyticsWorkspace.id
     nodeResourceGroupName: aksNodeResourceGroupName
-    enableAlbController: true
   }
 }
 
@@ -262,8 +261,6 @@ output APPLICATION_INSIGHTS_NAME string = applicationInsights.name
 output APPLICATION_INSIGHTS_CONNECTION_STRING string = applicationInsights.properties.ConnectionString
 output COSMOS_ACCOUNT_NAME string = cosmosAccount.name
 output COSMOS_DATABASE_NAME string = cosmosSqlDatabase.name
-#disable-next-line outputs-should-not-contain-secrets
-output COSMOS_CONNECTION_STRING string = cosmosAccount.listConnectionStrings().connectionStrings[0].connectionString
 output LOG_ANALYTICS_WORKSPACE_NAME string = logAnalyticsWorkspace.name
 output VNET_NAME string = vnet.outputs.vnetName
 output ENTRA_TENANT_ID string = entraTenantId

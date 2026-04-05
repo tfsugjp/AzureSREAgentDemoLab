@@ -25,9 +25,6 @@ param logAnalyticsWorkspaceId string
 @description('Name of the AKS node resource group.')
 param nodeResourceGroupName string
 
-@description('Whether to enable the ALB Controller add-on for Application Gateway for Containers.')
-param enableAlbController bool = true
-
 resource aksCluster 'Microsoft.ContainerService/managedClusters@2025-01-01' = {
   name: name
   location: location
@@ -78,9 +75,6 @@ resource aksCluster 'Microsoft.ContainerService/managedClusters@2025-01-01' = {
         enabled: true
       }
     }
-    serviceMeshProfile: enableAlbController
-      ? null
-      : null
   }
 }
 
