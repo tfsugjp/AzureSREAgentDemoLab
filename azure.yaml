@@ -7,8 +7,12 @@ infra:
   module: main
 hooks:
   postprovision:
-    shell: sh
-    run: scripts/setup-ai-search.sh
+    windows:
+      shell: pwsh
+      run: scripts/setup-ai-search.ps1
+    posix:
+      shell: sh
+      run: scripts/setup-ai-search.sh
 services:
   catalog:
     resourceName: ${CATALOG_SERVICE_NAME}
