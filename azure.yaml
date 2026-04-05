@@ -5,6 +5,10 @@ infra:
   provider: bicep
   path: infra
   module: main
+hooks:
+  postprovision:
+    shell: sh
+    run: scripts/setup-ai-search.sh
 services:
   catalog:
     resourceName: ${CATALOG_SERVICE_NAME}
