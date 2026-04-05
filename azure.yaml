@@ -11,7 +11,7 @@ hooks:
       shell: pwsh
       run: scripts/setup-ai-search.ps1
     posix:
-      shell: sh
+      shell: bash
       run: scripts/setup-ai-search.sh
 services:
   catalog:

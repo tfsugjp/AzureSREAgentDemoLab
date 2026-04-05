@@ -56,38 +56,67 @@ $Headers = @{
 }
 $ApiVersion = "api-version=2024-07-01"
 
-# インデックスを作成 (既存の場合は削除して再作成)
-Write-Host "[2/3] インデックスを作成中..." -ForegroundColor Yellow
+$ResetAiSearch = $env:RESET_AI_SEARCH -eq "true"
 
-# 既存インデックスの削除 (存在する場合)
+# インデックスを確認 (既存インデックスは保持し、RESET_AI_SEARCH=true の場合のみ削除して再作成)
+Write-Host "[2/3] インデックスを確認中..." -ForegroundColor Yellow
+if ($ResetAiSearch) {
+    Write-Host "  ! RESET_AI_SEARCH=true のため、既存インデックスを再作成します" -ForegroundColor Yellow
+}
+
+# 既存インデックスの存在確認
+$IndexExists = $false
 try {
     $null = Invoke-RestMethod `
         -Uri "$SearchEndpoint/indexes/${IndexName}?${ApiVersion}" `
-        -Method Delete `
+        -Method Get `
         -Headers $Headers `
-        -ErrorAction SilentlyContinue
-    Write-Host "  ✓ 既存インデックスをクリーンアップ" -ForegroundColor Green
+        -ErrorAction Stop
+    $IndexExists = $true
+    Write-Host "  ✓ 既存インデックスを検出" -ForegroundColor Green
 } catch {
-    # 404 の場合は無視 (インデックスが存在しない)
-    if ($_.Exception.Response.StatusCode -ne 404) {
-        Write-Host "  ⚠ インデックス削除で予期しないエラー: $($_.Exception.Message)" -ForegroundColor Yellow
-    } else {
+    if ($_.Exception.Response.StatusCode -eq 404) {
         Write-Host "  ✓ 既存インデックスなし (新規作成)" -ForegroundColor Green
+    } else {
+        Write-Host "  ✗ インデックス存在確認に失敗しました: $($_.Exception.Message)" -ForegroundColor Red
+        exit 1
     }
 }
 
-# インデックス作成
-try {
-    $SchemaBody = Get-Content -Path $SchemaFile -Raw -Encoding UTF8
-    $null = Invoke-RestMethod `
-        -Uri "$SearchEndpoint/indexes/${IndexName}?${ApiVersion}" `
-        -Method Put `
-        -Headers $Headers `
-        -Body $SchemaBody
-    Write-Host "  ✓ インデックス '$IndexName' を作成しました" -ForegroundColor Green
-} catch {
-    Write-Host "  ✗ インデックス作成に失敗しました: $($_.Exception.Message)" -ForegroundColor Red
-    exit 1
+if ($IndexExists -and $ResetAiSearch) {
+    try {
+        $null = Invoke-RestMethod `
+            -Uri "$SearchEndpoint/indexes/${IndexName}?${ApiVersion}" `
+            -Method Delete `
+            -Headers $Headers `
+            -ErrorAction Stop
+        Write-Host "  ✓ 既存インデックスをクリーンアップ" -ForegroundColor Green
+        $IndexExists = $false
+    } catch {
+        Write-Host "  ✗ インデックス削除に失敗しました: $($_.Exception.Message)" -ForegroundColor Red
+        exit 1
+    }
+} elseif ($IndexExists) {
+    Write-Host "  ✓ 既存インデックスを保持します (再作成しません)" -ForegroundColor Green
+    Write-Host "    再作成する場合は RESET_AI_SEARCH=true を指定してください" -ForegroundColor Yellow
+}
+
+$ShouldCreateIndex = -not $IndexExists
+if ($ShouldCreateIndex) {
+    try {
+        $SchemaBody = Get-Content -Path $SchemaFile -Raw -Encoding UTF8
+        $null = Invoke-RestMethod `
+            -Uri "$SearchEndpoint/indexes/${IndexName}?${ApiVersion}" `
+            -Method Put `
+            -Headers $Headers `
+            -Body $SchemaBody
+        Write-Host "  ✓ インデックス '$IndexName' を作成しました" -ForegroundColor Green
+    } catch {
+        Write-Host "  ✗ インデックス作成に失敗しました: $($_.Exception.Message)" -ForegroundColor Red
+        exit 1
+    }
+} else {
+    Write-Host "  ✓ インデックス作成をスキップしました" -ForegroundColor Green
 }
 Write-Host ""
 
@@ -95,11 +124,21 @@ Write-Host ""
 Write-Host "[3/3] ナレッジデータを投入中..." -ForegroundColor Yellow
 try {
     $DataBody = Get-Content -Path $DataFile -Raw -Encoding UTF8
-    $null = Invoke-RestMethod `
+    $UploadResult = Invoke-RestMethod `
         -Uri "$SearchEndpoint/indexes/${IndexName}/docs/index?${ApiVersion}" `
         -Method Post `
         -Headers $Headers `
         -Body $DataBody
+
+    # 個別ドキュメントの失敗チェック
+    $FailedDocs = @($UploadResult.value | Where-Object { $_.status -eq $false })
+    if ($FailedDocs.Count -gt 0) {
+        Write-Host "  ✗ $($FailedDocs.Count) 件のドキュメント投入に失敗しました" -ForegroundColor Red
+        $FailedDocs | ForEach-Object {
+            Write-Host "    Key: $($_.key), Error: $($_.errorMessage)" -ForegroundColor Red
+        }
+        exit 1
+    }
     Write-Host "  ✓ ナレッジデータの投入が完了しました" -ForegroundColor Green
 } catch {
     Write-Host "  ✗ データ投入に失敗しました: $($_.Exception.Message)" -ForegroundColor Red
