@@ -156,7 +156,7 @@ public sealed class OrderServiceTests
             .ReturnsAsync(mockResponse.Object);
 
         // Act
-        var result = await _service.CreateAsync(order);
+        await _service.CreateAsync(order);
 
         // Assert
         Assert.AreEqual("existing-id", order.Id);
