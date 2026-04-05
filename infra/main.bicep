@@ -43,7 +43,7 @@ var commonTags = union(tags, {
 var logAnalyticsName = take('law-${envToken}-${uniqueToken}', 63)
 var appInsightsName = take('appi-${envToken}-${uniqueToken}', 64)
 var containerAppsEnvironmentName = take('cae-${envToken}-${uniqueToken}', 32)
-var cosmosAccountName = take('cosmos-${envToken}-${uniqueToken}', 50)
+var cosmosAccountName = take('cosmos-${envToken}-${uniqueToken}', 44)
 var acrName = take('gad${compactEnvToken}${uniqueString(subscription().subscriptionId, resourceGroup().id, environmentName, location)}', 50)
 
 var catalogServiceName = take('ca-cat-${envToken}-${uniqueToken}', 32)
@@ -98,7 +98,7 @@ resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = {
   }
 }
 
-resource containerRegistry 'Microsoft.ContainerRegistry/registries@2026-01-01-preview' = {
+resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
   name: acrName
   location: location
   sku: {
@@ -113,7 +113,7 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2026-01-01-pr
   }
 }
 
-resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2025-10-15' = {
+resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' = {
   name: cosmosAccountName
   location: location
   kind: 'GlobalDocumentDB'
@@ -153,7 +153,7 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2025-10-15' = {
   }
 }
 
-resource cosmosSqlDatabase 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2025-11-01-preview' = {
+resource cosmosSqlDatabase 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2024-11-15' = {
   name: cosmosDatabaseName
   parent: cosmosAccount
   location: location
@@ -165,7 +165,7 @@ resource cosmosSqlDatabase 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2
   }
 }
 
-resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2025-10-02-preview' = {
+resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2024-10-02-preview' = {
   name: containerAppsEnvironmentName
   location: location
   tags: commonTags

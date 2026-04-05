@@ -23,16 +23,18 @@ param tags array = [
   'API'
 ]
 
+var sanitizedUniqueName = toLower(replace(appDisplayName, ' ', '-'))
+
 // Create the App Registration
 resource apiAppRegistration 'Microsoft.Graph/applications@v1.0' = {
   displayName: appDisplayName
-  uniqueName: toLower(replace(appDisplayName, ' ', '-'))
+  uniqueName: sanitizedUniqueName
   signInAudience: signInAudience
   tags: tags
 
   // API identifier (audience) - this will be used for JWT validation
   identifierUris: [
-    'api://${appDisplayName}'
+    'api://${sanitizedUniqueName}'
   ]
 
   // API definition - expose scopes for client applications

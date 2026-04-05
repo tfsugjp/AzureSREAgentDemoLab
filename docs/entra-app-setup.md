@@ -23,6 +23,7 @@ az group create --name "rg-entra-apps" --location "westus3"
 # Entra IDアプリケーション登録を作成
 az deployment group create `
   --resource-group "rg-entra-apps" `
+  --name "entra-app" `
   --template-file "infra/modules/entra-app.bicep" `
   --parameters appDisplayName=$appName `
   --query "properties.outputs"
@@ -138,7 +139,7 @@ Write-Host "ENTRA_AUDIENCE: $audience"
 
 ```powershell
 # プロジェクトのルートディレクトリに移動
-cd f:\GitHub\tfsug\GlobalAzureDemo2026
+cd <repo-root>
 
 # dev環境を作成
 azd env new dev -l westus3

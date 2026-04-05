@@ -75,13 +75,32 @@ Write-Host "[3/5] App ID URI (Audience) を設定中..." -ForegroundColor Yellow
 $audience = "api://$clientId"
 
 try {
-    az ad app update `
-        --id $objectId `
-        --identifier-uris $audience `
-        2>$null
-    Write-Host "  ✓ Audience設定完了: $audience" -ForegroundColor Green
+    $appDetails = az ad app show --id $objectId | ConvertFrom-Json
+    $identifierUris = @($appDetails.identifierUris)
+
+    if ($identifierUris -contains $audience) {
+        Write-Host "  ✓ Audienceは既に設定済みです: $audience" -ForegroundColor Green
+    } else {
+        $updateOutput = az ad app update `
+            --id $objectId `
+            --identifier-uris $audience 2>&1
+
+        if ($LASTEXITCODE -ne 0) {
+            throw "az ad app update が失敗しました: $updateOutput"
+        }
+        $updatedAppDetails = az ad app show --id $objectId | ConvertFrom-Json
+        $updatedIdentifierUris = @($updatedAppDetails.identifierUris)
+
+        if (-not ($updatedIdentifierUris -contains $audience)) {
+            throw "App ID URI の更新後も identifierUris に '$audience' が存在しません。現在の値: $($updatedIdentifierUris -join ', ')"
+        }
+
+        Write-Host "  ✓ Audience設定完了: $audience" -ForegroundColor Green
+    }
 } catch {
-    Write-Host "  ⚠ Audience設定をスキップ (既に設定済みの可能性)" -ForegroundColor Yellow
+    Write-Host "  ✗ Audience設定に失敗しました" -ForegroundColor Red
+    Write-Host "  エラー: $_" -ForegroundColor Red
+    exit 1
 }
 Write-Host ""
 

@@ -215,13 +215,15 @@ dotnet build GlobalAzureDemo2026.slnx
 azd env new dev -l westus3
 ```
 
-次に、必須値を環境へ設定します。
+次に、必須値を環境へ設定します。`scripts/setup-entra-app.ps1` を使用すると Entra ID 登録と値の設定が自動化されます (詳細は `docs/entra-app-setup.md` 参照)。
 
 ```bash
 azd env set ENTRA_TENANT_ID <your-tenant-id>
 azd env set ENTRA_CLIENT_ID <your-client-id>
-azd env set ENTRA_AUDIENCE api://<your-client-id>
+azd env set ENTRA_AUDIENCE <identifier-uri-from-entra-registration>
 ```
+
+> `ENTRA_AUDIENCE` には、Entra ID アプリ登録の App ID URI (識別子 URI) を指定します。`scripts/setup-entra-app.ps1` を使った場合は `api://<your-client-id>` 形式、Bicep テンプレートを使った場合は `api://<sanitized-display-name>` 形式になります。JWT の `aud` 検証はこの値と一致する必要があります。
 
 必要に応じて追加設定も可能です。
 
@@ -231,7 +233,7 @@ azd env set DISABLE_AUTH false
 azd env set OPEN_TELEMETRY_ENDPOINT <optional-otlp-endpoint>
 ```
 
-> 参考: ルートの `.env` は必須項目のメモです。実際に `azd` が読むのは `.azure/<environment-name>/.env` です。
+> 参考: 実際に `azd` が読むのは `.azure/<environment-name>/.env` です。必要な値は任意のメモに控えて管理してください。
 
 ### デプロイ前の確認
 
