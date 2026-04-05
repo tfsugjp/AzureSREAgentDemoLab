@@ -1,0 +1,21 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: global-azure-demo-gateway
+  namespace: global-azure-demo
+  annotations:
+    alb.networking.azure.io/alb-id: <AGC_RESOURCE_ID>
+spec:
+  gatewayClassName: azure-alb-external
+  listeners:
+    # HTTP listener only. TLS termination is not configured in this demo.
+    # For production use, add an HTTPS listener with a certificate.
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: Same
+  addresses:
+    - type: alb.networking.azure.io/alb-frontend
+      value: <AGC_FRONTEND_NAME>
