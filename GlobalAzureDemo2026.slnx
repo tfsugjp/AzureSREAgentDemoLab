@@ -4,4 +4,9 @@
     <Project Path="src/NotificationService/NotificationService.csproj" />
     <Project Path="src/OrderService/OrderService.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="src/CatalogService.Tests/CatalogService.Tests.csproj" />
+    <Project Path="src/NotificationService.Tests/NotificationService.Tests.csproj" />
+    <Project Path="src/OrderService.Tests/OrderService.Tests.csproj" />
+  </Folder>
 </Solution>

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Configuration;
@@ -8,6 +9,7 @@ using System.Net.Http;
 
 namespace SharedLibrary.Cosmos;
 
+[ExcludeFromCodeCoverage]
 public static class CosmosDbExtensions
 {
     public static IServiceCollection AddCosmosDb(

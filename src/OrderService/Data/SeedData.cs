@@ -1,8 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Azure.Cosmos;
 using SharedLibrary.Models;
 
 namespace OrderService.Data;
 
+[ExcludeFromCodeCoverage]
 public static class SeedData
 {
     public static async Task SeedAsync(IServiceProvider serviceProvider)

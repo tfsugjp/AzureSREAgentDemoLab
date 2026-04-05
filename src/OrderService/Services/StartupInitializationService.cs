@@ -1,9 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using OrderService.Data;
 using OrderService.HealthChecks;
 using SharedLibrary.Cosmos;
 
 namespace OrderService.Services;
 
+[ExcludeFromCodeCoverage]
 public class StartupInitializationService : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
