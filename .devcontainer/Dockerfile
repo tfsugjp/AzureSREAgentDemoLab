@@ -10,17 +10,26 @@ RUN apt-get update \
         bash-completion \
         ca-certificates \
         curl \
+        dnsutils \
+        gh \
         git \
+        git-lfs \
         gnupg \
+        iputils-ping \
         jq \
         less \
         lsb-release \
+        make \
+        netcat-openbsd \
         procps \
+        python3 \
         software-properties-common \
         sudo \
         unzip \
         wget \
     && rm -rf /var/lib/apt/lists/*
+
+RUN git lfs install --system
 
 RUN wget -q https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb -O /tmp/packages-microsoft-prod.deb \
     && dpkg -i /tmp/packages-microsoft-prod.deb \
