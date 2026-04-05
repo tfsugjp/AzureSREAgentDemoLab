@@ -74,7 +74,7 @@ public sealed class ProductSearchServiceTests
             It.IsAny<QueryDefinition>(),
             It.IsAny<string>(),
             It.IsAny<QueryRequestOptions>()))
-            .Callback<QueryDefinition, string, QueryRequestOptions>((queryDefinition, _, _) =>
+            .Callback<QueryDefinition, string, QueryRequestOptions>((queryDefinition, continuationToken, requestOptions) =>
                 capturedQueryDefinition = queryDefinition)
             .Returns(mockIterator.Object);
 
@@ -101,7 +101,7 @@ public sealed class ProductSearchServiceTests
             It.IsAny<QueryDefinition>(),
             It.IsAny<string>(),
             It.IsAny<QueryRequestOptions>()))
-            .Callback<QueryDefinition, string, QueryRequestOptions>((queryDefinition, _, _) =>
+            .Callback<QueryDefinition, string, QueryRequestOptions>((queryDefinition, continuationToken, requestOptions) =>
                 capturedQueryDefinition = queryDefinition)
             .Returns(mockIterator.Object);
 
