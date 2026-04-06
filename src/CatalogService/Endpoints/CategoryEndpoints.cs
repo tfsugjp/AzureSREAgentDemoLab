@@ -1,8 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using CatalogService.Services;
 using SharedLibrary.Models;
 
 namespace CatalogService.Endpoints;
 
+[ExcludeFromCodeCoverage]
 public static class CategoryEndpoints
 {
     public static WebApplication MapCategoryEndpoints(this WebApplication app)

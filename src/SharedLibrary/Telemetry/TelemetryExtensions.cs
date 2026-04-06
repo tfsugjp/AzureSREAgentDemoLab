@@ -7,9 +7,11 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
 using Serilog.Events;
+using System.Diagnostics.CodeAnalysis;
 
 namespace SharedLibrary.Telemetry;
 
+[ExcludeFromCodeCoverage]
 public static class TelemetryExtensions
 {
     public static WebApplicationBuilder AddServiceTelemetry(

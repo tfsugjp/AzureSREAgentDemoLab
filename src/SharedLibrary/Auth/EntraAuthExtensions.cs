@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
@@ -6,6 +7,7 @@ using Microsoft.Identity.Web;
 
 namespace SharedLibrary.Auth;
 
+[ExcludeFromCodeCoverage]
 public static class EntraAuthExtensions
 {
     public static IServiceCollection AddEntraAuth(

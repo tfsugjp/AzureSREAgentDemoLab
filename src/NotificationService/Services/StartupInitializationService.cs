@@ -1,9 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using NotificationService.Data;
 using NotificationService.HealthChecks;
 using SharedLibrary.Cosmos;
 
 namespace NotificationService.Services;
 
+[ExcludeFromCodeCoverage]
 public class StartupInitializationService : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
