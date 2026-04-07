@@ -10,12 +10,8 @@ param environmentId string
 @description('Container registry login server.')
 param registryServer string
 
-@description('Container registry admin username for initial provisioning.')
-param registryUsername string
-
-@secure()
-@description('Container registry admin password for initial provisioning.')
-param registryPassword string
+@description('Resource ID of the user-assigned managed identity used for ACR image pulls.')
+param registryIdentityResourceId string
 
 @description('Public placeholder image used during provisioning before azd deploy updates the image. It must listen on port 8080 so the initial revision can become healthy.')
 param image string = 'mcr.microsoft.com/dotnet/samples:aspnetapp'
@@ -64,7 +60,10 @@ resource app 'Microsoft.App/containerApps@2026-01-01' = {
   name: name
   location: location
   identity: {
-    type: 'SystemAssigned'
+    type: 'SystemAssigned, UserAssigned'
+    userAssignedIdentities: {
+      '${registryIdentityResourceId}': {}
+    }
   }
   tags: tags
   properties: {
@@ -80,18 +79,13 @@ resource app 'Microsoft.App/containerApps@2026-01-01' = {
       registries: [
         {
           server: registryServer
-          username: registryUsername
-          passwordSecretRef: 'acr-password'
+          identity: registryIdentityResourceId
         }
       ]
       secrets: [
         {
           name: 'cosmos-connection-string'
           value: cosmosConnectionString
-        }
-        {
-          name: 'acr-password'
-          value: registryPassword
         }
       ]
     }

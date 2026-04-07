@@ -51,6 +51,7 @@ var searchServiceName = take('srch-${envToken}-${uniqueToken}', 60)
 var catalogServiceName = take('ca-cat-${envToken}-${uniqueToken}', 32)
 var orderServiceName = take('ca-ord-${envToken}-${uniqueToken}', 32)
 var notificationServiceName = take('ca-not-${envToken}-${uniqueToken}', 32)
+var registryPullIdentityName = take('id-acr-${envToken}-${uniqueToken}', 128)
 
 var nonProdCpu = 1
 var prodCpu = 1
@@ -59,7 +60,6 @@ var prodMemory = '2Gi'
 var minReplicas = isProduction ? 1 : 0
 var maxReplicas = isProduction ? 3 : 1
 
-var cosmosConnectionString = cosmosAccount.listConnectionStrings().connectionStrings[0].connectionString
 var acrPullRoleDefinitionId = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
 
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2025-07-01' = {
@@ -100,7 +100,7 @@ resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = {
   }
 }
 
-resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
+resource containerRegistry 'Microsoft.ContainerRegistry/registries@2025-11-01' = {
   name: acrName
   location: location
   sku: {
@@ -108,12 +108,35 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' =
   }
   tags: commonTags
   properties: {
-    // Enabled to support the educational azd up flow, which uses ACR credential operations during local image push.
+    // Left enabled to support local azd push workflows; runtime image pulls use the user-assigned managed identity below.
     adminUserEnabled: true
     publicNetworkAccess: 'Enabled'
     networkRuleBypassOptions: 'AzureServices'
+    policies: {
+      azureADAuthenticationAsArmPolicy: {
+        status: 'enabled'
+      }
+    }
   }
 }
+
+resource registryPullIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: registryPullIdentityName
+  location: location
+  tags: commonTags
+}
+
+resource registryPullIdentityAcrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(containerRegistry.id, registryPullIdentity.id, 'acrpull-uami')
+  scope: containerRegistry
+  properties: {
+    roleDefinitionId: acrPullRoleDefinitionId
+    principalId: registryPullIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+var cosmosConnectionString = cosmosAccount.listConnectionStrings().connectionStrings[0].connectionString
 
 resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-11-15' = {
   name: cosmosAccountName
@@ -217,8 +240,7 @@ module catalogService './modules/container-app.bicep' = {
     location: location
     environmentId: containerAppsEnvironment.id
     registryServer: containerRegistry.properties.loginServer
-    registryUsername: containerRegistry.listCredentials().username
-    registryPassword: containerRegistry.listCredentials().passwords[0].value
+    registryIdentityResourceId: registryPullIdentity.id
     cpu: isProduction ? prodCpu : nonProdCpu
     memory: isProduction ? prodMemory : nonProdMemory
     minReplicas: minReplicas
@@ -235,6 +257,9 @@ module catalogService './modules/container-app.bicep' = {
       service: 'catalog'
     })
   }
+  dependsOn: [
+    registryPullIdentityAcrPull
+  ]
 }
 
 module orderService './modules/container-app.bicep' = {
@@ -244,8 +269,7 @@ module orderService './modules/container-app.bicep' = {
     location: location
     environmentId: containerAppsEnvironment.id
     registryServer: containerRegistry.properties.loginServer
-    registryUsername: containerRegistry.listCredentials().username
-    registryPassword: containerRegistry.listCredentials().passwords[0].value
+    registryIdentityResourceId: registryPullIdentity.id
     cpu: isProduction ? prodCpu : nonProdCpu
     memory: isProduction ? prodMemory : nonProdMemory
     minReplicas: minReplicas
@@ -262,6 +286,9 @@ module orderService './modules/container-app.bicep' = {
       service: 'order'
     })
   }
+  dependsOn: [
+    registryPullIdentityAcrPull
+  ]
 }
 
 module notificationService './modules/container-app.bicep' = {
@@ -271,8 +298,7 @@ module notificationService './modules/container-app.bicep' = {
     location: location
     environmentId: containerAppsEnvironment.id
     registryServer: containerRegistry.properties.loginServer
-    registryUsername: containerRegistry.listCredentials().username
-    registryPassword: containerRegistry.listCredentials().passwords[0].value
+    registryIdentityResourceId: registryPullIdentity.id
     cpu: isProduction ? prodCpu : nonProdCpu
     memory: isProduction ? prodMemory : nonProdMemory
     minReplicas: minReplicas
@@ -289,39 +315,14 @@ module notificationService './modules/container-app.bicep' = {
       service: 'notification'
     })
   }
-}
-
-resource catalogAcrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(containerRegistry.id, catalogServiceName, 'acrpull')
-  scope: containerRegistry
-  properties: {
-    roleDefinitionId: acrPullRoleDefinitionId
-    principalId: catalogService.outputs.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
-resource orderAcrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(containerRegistry.id, orderServiceName, 'acrpull')
-  scope: containerRegistry
-  properties: {
-    roleDefinitionId: acrPullRoleDefinitionId
-    principalId: orderService.outputs.principalId
-    principalType: 'ServicePrincipal'
-  }
-}
-
-resource notificationAcrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(containerRegistry.id, notificationServiceName, 'acrpull')
-  scope: containerRegistry
-  properties: {
-    roleDefinitionId: acrPullRoleDefinitionId
-    principalId: notificationService.outputs.principalId
-    principalType: 'ServicePrincipal'
-  }
+  dependsOn: [
+    registryPullIdentityAcrPull
+  ]
 }
 
 output ACR_NAME string = containerRegistry.name
+output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerRegistry.properties.loginServer
+output AZURE_CONTAINER_REGISTRY_NAME string = containerRegistry.name
 output AI_SEARCH_ENDPOINT string = aiSearch.outputs.endpoint
 output AI_SEARCH_NAME string = aiSearch.outputs.name
 output APPLICATION_INSIGHTS_NAME string = applicationInsights.name
