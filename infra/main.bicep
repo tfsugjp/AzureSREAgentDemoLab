@@ -108,8 +108,8 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' =
   }
   tags: commonTags
   properties: {
-    adminUserEnabled: false
-    anonymousPullEnabled: false
+    // Enabled to support the educational azd up flow, which uses ACR credential operations during local image push.
+    adminUserEnabled: true
     publicNetworkAccess: 'Enabled'
     networkRuleBypassOptions: 'AzureServices'
   }
@@ -217,6 +217,8 @@ module catalogService './modules/container-app.bicep' = {
     location: location
     environmentId: containerAppsEnvironment.id
     registryServer: containerRegistry.properties.loginServer
+    registryUsername: containerRegistry.listCredentials().username
+    registryPassword: containerRegistry.listCredentials().passwords[0].value
     cpu: isProduction ? prodCpu : nonProdCpu
     memory: isProduction ? prodMemory : nonProdMemory
     minReplicas: minReplicas
@@ -242,6 +244,8 @@ module orderService './modules/container-app.bicep' = {
     location: location
     environmentId: containerAppsEnvironment.id
     registryServer: containerRegistry.properties.loginServer
+    registryUsername: containerRegistry.listCredentials().username
+    registryPassword: containerRegistry.listCredentials().passwords[0].value
     cpu: isProduction ? prodCpu : nonProdCpu
     memory: isProduction ? prodMemory : nonProdMemory
     minReplicas: minReplicas
@@ -267,6 +271,8 @@ module notificationService './modules/container-app.bicep' = {
     location: location
     environmentId: containerAppsEnvironment.id
     registryServer: containerRegistry.properties.loginServer
+    registryUsername: containerRegistry.listCredentials().username
+    registryPassword: containerRegistry.listCredentials().passwords[0].value
     cpu: isProduction ? prodCpu : nonProdCpu
     memory: isProduction ? prodMemory : nonProdMemory
     minReplicas: minReplicas
