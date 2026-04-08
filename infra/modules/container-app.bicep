@@ -10,8 +10,11 @@ param environmentId string
 @description('Container registry login server.')
 param registryServer string
 
-@description('Public placeholder image used during provisioning before azd deploy updates the image.')
-param image string = 'mcr.microsoft.com/k8se/quickstart:latest'
+@description('Resource ID of the user-assigned managed identity used for ACR image pulls.')
+param registryIdentityResourceId string
+
+@description('Public placeholder image used during provisioning before azd deploy updates the image. It must listen on port 8080 so the initial revision can become healthy.')
+param image string = 'mcr.microsoft.com/dotnet/samples:aspnetapp'
 
 @description('Container CPU allocation.')
 param cpu int
@@ -57,7 +60,10 @@ resource app 'Microsoft.App/containerApps@2026-01-01' = {
   name: name
   location: location
   identity: {
-    type: 'SystemAssigned'
+    type: 'SystemAssigned, UserAssigned'
+    userAssignedIdentities: {
+      '${registryIdentityResourceId}': {}
+    }
   }
   tags: tags
   properties: {
@@ -73,7 +79,7 @@ resource app 'Microsoft.App/containerApps@2026-01-01' = {
       registries: [
         {
           server: registryServer
-          identity: 'system'
+          identity: registryIdentityResourceId
         }
       ]
       secrets: [
@@ -92,6 +98,10 @@ resource app 'Microsoft.App/containerApps@2026-01-01' = {
             {
               name: 'ASPNETCORE_ENVIRONMENT'
               value: 'Production'
+            }
+            {
+              name: 'ASPNETCORE_URLS'
+              value: 'http://+:8080'
             }
             {
               name: 'Authentication__DisableAuth'
@@ -122,41 +132,6 @@ resource app 'Microsoft.App/containerApps@2026-01-01' = {
               value: openTelemetryEndpoint
             }
           ]
-          probes: [
-            {
-              type: 'Startup'
-              httpGet: {
-                path: '/health/ready'
-                port: 8080
-              }
-              initialDelaySeconds: 10
-              periodSeconds: 10
-              timeoutSeconds: 5
-              failureThreshold: 30
-            }
-            {
-              type: 'Liveness'
-              httpGet: {
-                path: '/health'
-                port: 8080
-              }
-              initialDelaySeconds: 30
-              periodSeconds: 30
-              timeoutSeconds: 5
-              failureThreshold: 3
-            }
-            {
-              type: 'Readiness'
-              httpGet: {
-                path: '/health/ready'
-                port: 8080
-              }
-              initialDelaySeconds: 15
-              periodSeconds: 15
-              timeoutSeconds: 5
-              failureThreshold: 6
-            }
-          ]
           resources: {
             cpu: cpu
             memory: memory
@@ -183,7 +158,8 @@ resource app 'Microsoft.App/containerApps@2026-01-01' = {
 
 output name string = app.name
 output resourceId string = app.id
-output principalId string = app.identity.principalId
+@description('Principal ID of the system-assigned managed identity. For ACR pull permissions, use the user-assigned identity referenced by registryIdentityResourceId.')
+output systemAssignedPrincipalId string = app.identity.principalId
 output endpoint string = empty(app.properties.configuration.ingress.?fqdn ?? '')
   ? ''
   : 'https://${app.properties.configuration.ingress.?fqdn ?? ''}'
