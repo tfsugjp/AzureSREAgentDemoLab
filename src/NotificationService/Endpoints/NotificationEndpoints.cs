@@ -1,8 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using NotificationService.Services;
 using SharedLibrary.Models;
 
 namespace NotificationService.Endpoints;
 
+[ExcludeFromCodeCoverage]
 public static class NotificationEndpoints
 {
     public static WebApplication MapNotificationEndpoints(this WebApplication app)

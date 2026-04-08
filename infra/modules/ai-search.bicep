@@ -15,7 +15,7 @@ param sku string = 'free'
 @description('Tags to apply to the resource.')
 param tags object = {}
 
-resource searchService 'Microsoft.Search/searchServices@2024-06-01' = {
+resource searchService 'Microsoft.Search/searchServices@2023-11-01' = {
   name: name
   location: location
   tags: tags
@@ -23,7 +23,7 @@ resource searchService 'Microsoft.Search/searchServices@2024-06-01' = {
     name: sku
   }
   properties: {
-    hostingMode: 'default'
+    hostingMode: 'Default'
     partitionCount: 1
     replicaCount: 1
     publicNetworkAccess: 'enabled'

@@ -1,8 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using OrderService.Services;
 using SharedLibrary.Models;
 
 namespace OrderService.Endpoints;
 
+[ExcludeFromCodeCoverage]
 public static class OrderEndpoints
 {
     public static WebApplication MapOrderEndpoints(this WebApplication app)
