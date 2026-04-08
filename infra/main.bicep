@@ -108,8 +108,8 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2025-11-01' =
   }
   tags: commonTags
   properties: {
-    // Left enabled to support local azd push workflows; runtime image pulls use the user-assigned managed identity below.
-    adminUserEnabled: true
+    // Disable the admin account and rely on Microsoft Entra / managed identity-based authentication for pushes and pulls.
+    adminUserEnabled: false
     publicNetworkAccess: 'Enabled'
     networkRuleBypassOptions: 'AzureServices'
     policies: {

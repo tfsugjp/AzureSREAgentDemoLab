@@ -158,7 +158,8 @@ resource app 'Microsoft.App/containerApps@2026-01-01' = {
 
 output name string = app.name
 output resourceId string = app.id
-output principalId string = app.identity.principalId
+@description('Principal ID of the system-assigned managed identity. For ACR pull permissions, use the user-assigned identity referenced by registryIdentityResourceId.')
+output systemAssignedPrincipalId string = app.identity.principalId
 output endpoint string = empty(app.properties.configuration.ingress.?fqdn ?? '')
   ? ''
   : 'https://${app.properties.configuration.ingress.?fqdn ?? ''}'
