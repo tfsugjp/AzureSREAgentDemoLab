@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Moq;
@@ -55,12 +55,15 @@ public class CosmosDbHealthCheckTests
     [TestMethod]
     public async Task CheckHealthAsync_WhenGenericExceptionThrown_ReturnsUnhealthy()
     {
+        var exception = new HttpRequestException("Network error");
         _mockCosmosClient
             .Setup(c => c.ReadAccountAsync())
-            .ThrowsAsync(new HttpRequestException("Network error"));
+            .ThrowsAsync(exception);
 
         var result = await _healthCheck.CheckHealthAsync(_context);
 
         Assert.AreEqual(HealthStatus.Unhealthy, result.Status);
+        Assert.AreEqual("Cosmos DB is unreachable.", result.Description);
+        Assert.AreSame(exception, result.Exception);
     }
 }

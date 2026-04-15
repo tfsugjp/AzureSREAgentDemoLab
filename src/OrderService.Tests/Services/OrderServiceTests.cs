@@ -1,4 +1,4 @@
-using Microsoft.Azure.Cosmos;
+﻿using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using OrderService.Services;
@@ -312,25 +312,37 @@ public sealed class OrderServiceTests
     public async Task UpdateStatusAsync_AllValidTransitions_Succeed(string currentStatus, string newStatus)
     {
         // Arrange
-        var order = new Order { Id = "order-1", UserId = "user-1", Status = currentStatus };
-        var updatedOrder = new Order { Id = "order-1", Status = newStatus };
+        var order = new Order
+        {
+            Id = "order-1",
+            UserId = "user-1",
+            Status = currentStatus,
+            UpdatedAt = DateTime.UtcNow.AddDays(-1)
+        };
+        var originalUpdatedAt = order.UpdatedAt;
+        var updatedOrder = new Order { Id = "order-1", UserId = "user-1", Status = newStatus };
 
         SetupQueryIterator(new[] { order });
 
         var mockResponse = CosmosTestHelpers.CreateMockItemResponse(updatedOrder);
         _mockContainer.Setup(c => c.ReplaceItemAsync(
-            It.IsAny<Order>(),
-            It.IsAny<string>(),
-            It.IsAny<PartitionKey>(),
+            order,
+            order.Id,
+            It.Is<PartitionKey>(key => key.Equals(new PartitionKey(order.UserId))),
             It.IsAny<ItemRequestOptions>(),
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(mockResponse.Object);
 
         // Act
+        var before = DateTime.UtcNow.AddSeconds(-1);
         var result = await _service.UpdateStatusAsync("order-1", newStatus);
+        var after = DateTime.UtcNow.AddSeconds(1);
 
         // Assert
         Assert.IsNotNull(result);
+        Assert.AreEqual(newStatus, order.Status);
+        Assert.IsTrue(order.UpdatedAt > originalUpdatedAt);
+        Assert.IsTrue(order.UpdatedAt >= before && order.UpdatedAt <= after);
     }
 
     // ─── DeleteAsync ──────────────────────────────────────────────────────────

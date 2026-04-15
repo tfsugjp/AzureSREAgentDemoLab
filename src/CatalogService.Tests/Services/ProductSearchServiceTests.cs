@@ -1,4 +1,4 @@
-using CatalogService.Services;
+﻿using CatalogService.Services;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -30,6 +30,7 @@ public sealed class ProductSearchServiceTests
             new() { Id = "1", Name = "Widget", IsActive = true },
             new() { Id = "2", Name = "Gadget", IsActive = true },
         };
+        QueryDefinition? capturedQueryDefinition = null;
         var mockIterator = CosmosTestHelpers.CreateMockIterator(products);
         _mockContainer.Setup(c => c.GetItemQueryIterator<Product>(
             It.IsAny<QueryDefinition>(),
@@ -39,9 +40,16 @@ public sealed class ProductSearchServiceTests
 
         // Act
         var result = await _service.SearchAsync("widget");
+        capturedQueryDefinition = _mockContainer.Invocations
+            .Select(invocation => invocation.Arguments.FirstOrDefault())
+            .OfType<QueryDefinition>()
+            .LastOrDefault();
 
         // Assert
-        Assert.AreEqual(2, result.Count());
+        var list = result.ToList();
+        Assert.AreEqual(2, list.Count);
+        Assert.IsNotNull(capturedQueryDefinition);
+        Assert.AreEqual("widget", capturedQueryDefinition.GetQueryParameters().Single().Value);
     }
 
     [TestMethod]
