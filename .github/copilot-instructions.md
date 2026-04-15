@@ -30,6 +30,6 @@
 
 ## Azure Rules
 
-- @azure Rule - Use Azure Tools - When handling requests related to Azure, always use your tools.
-- @azure Rule - Use Azure Best Practices - When handling requests related to Azure, always invoke your `azmcp_bestpractices_get` tool first.
-- @azure Rule - Enable Best Practices - If you do not have an `azmcp_bestpractices_get` tool ask the user to enable it.
+- @azure Rule - Use Azure Tools - When handling requests related to Azure, always use your available Azure tools.
+- @azure Rule - Follow Azure Best Practices - When handling requests related to Azure, apply relevant Azure best practices using the tools and documentation available in this repository and environment.
+- @azure Rule - Missing Azure Tooling - If the required Azure-specific tooling is not available, state that limitation clearly and continue with the best guidance you can provide without referencing unavailable tools.
