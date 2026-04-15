@@ -17,7 +17,7 @@
 - When writing commit messages, I use the following format:
 
 ```
-- [add/fix/update/remove] [scope]: [description]
+[add/fix/update/remove] [scope]: [description]
 ```
 
 - If repository is public, I write commit messages in English. If repository is private and NOT MIT licensed, I write commit messages in Japanese.
