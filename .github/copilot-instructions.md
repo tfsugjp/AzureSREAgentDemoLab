@@ -4,9 +4,9 @@
 
 ## Work Guidelines
 
--Before starting work, I create an issue.
--After creating the issue, I create a topic branch and then start planning.
--If the issue becomes large, I create sub-issues.
+- Before starting work, I create an issue.
+- After creating the issue, I create a topic branch and then start planning.
+- If the issue becomes large, I create sub-issues.
 
 ## Scripts in Documents
 
