@@ -1,4 +1,4 @@
-using SharedLibrary.Models;
+﻿using SharedLibrary.Models;
 
 namespace CatalogService.Tests.Models;
 
@@ -75,11 +75,18 @@ public class SharedLibraryModelTests
     [TestMethod]
     public void NotificationType_Constants_AreCorrect()
     {
-        Assert.AreEqual("Info", NotificationType.Info);
-        Assert.AreEqual("OrderConfirmation", NotificationType.OrderConfirmation);
-        Assert.AreEqual("ShipmentUpdate", NotificationType.ShipmentUpdate);
-        Assert.AreEqual("Promotion", NotificationType.Promotion);
-        Assert.AreEqual("Alert", NotificationType.Alert);
+        var notificationTypes = new[]
+        {
+            NotificationType.Info,
+            NotificationType.OrderConfirmation,
+            NotificationType.ShipmentUpdate,
+            NotificationType.Promotion,
+            NotificationType.Alert
+        };
+
+        CollectionAssert.AreEqual(
+            new[] { "Info", "OrderConfirmation", "ShipmentUpdate", "Promotion", "Alert" },
+            notificationTypes);
     }
 
     [TestMethod]
@@ -100,12 +107,19 @@ public class SharedLibraryModelTests
     [TestMethod]
     public void OrderStatus_Constants_AreCorrect()
     {
-        Assert.AreEqual("Pending", OrderStatus.Pending);
-        Assert.AreEqual("Confirmed", OrderStatus.Confirmed);
-        Assert.AreEqual("Processing", OrderStatus.Processing);
-        Assert.AreEqual("Shipped", OrderStatus.Shipped);
-        Assert.AreEqual("Delivered", OrderStatus.Delivered);
-        Assert.AreEqual("Cancelled", OrderStatus.Cancelled);
+        var orderStatuses = new[]
+        {
+            OrderStatus.Pending,
+            OrderStatus.Confirmed,
+            OrderStatus.Processing,
+            OrderStatus.Shipped,
+            OrderStatus.Delivered,
+            OrderStatus.Cancelled
+        };
+
+        CollectionAssert.AreEqual(
+            new[] { "Pending", "Confirmed", "Processing", "Shipped", "Delivered", "Cancelled" },
+            orderStatuses);
     }
 
     [TestMethod]
