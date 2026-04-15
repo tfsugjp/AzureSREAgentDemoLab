@@ -36,14 +36,11 @@ public sealed class ProductSearchServiceTests
             It.IsAny<QueryDefinition>(),
             It.IsAny<string>(),
             It.IsAny<QueryRequestOptions>()))
+            .Callback<QueryDefinition, string, QueryRequestOptions>((qd, _, _) => capturedQueryDefinition = qd)
             .Returns(mockIterator.Object);
 
         // Act
         var result = await _service.SearchAsync("widget");
-        capturedQueryDefinition = _mockContainer.Invocations
-            .Select(invocation => invocation.Arguments.FirstOrDefault())
-            .OfType<QueryDefinition>()
-            .LastOrDefault();
 
         // Assert
         var list = result.ToList();
@@ -82,14 +79,11 @@ public sealed class ProductSearchServiceTests
             It.IsAny<QueryDefinition>(),
             It.IsAny<string>(),
             It.IsAny<QueryRequestOptions>()))
+            .Callback<QueryDefinition, string, QueryRequestOptions>((qd, _, _) => capturedQueryDefinition = qd)
             .Returns(mockIterator.Object);
 
         // Act
         var result = await _service.SearchAsync(query);
-        capturedQueryDefinition = _mockContainer.Invocations
-            .Select(invocation => invocation.Arguments.FirstOrDefault())
-            .OfType<QueryDefinition>()
-            .LastOrDefault();
 
         // Assert
         Assert.AreEqual(1, result.Count());
@@ -111,14 +105,11 @@ public sealed class ProductSearchServiceTests
             It.IsAny<QueryDefinition>(),
             It.IsAny<string>(),
             It.IsAny<QueryRequestOptions>()))
+            .Callback<QueryDefinition, string, QueryRequestOptions>((qd, _, _) => capturedQueryDefinition = qd)
             .Returns(mockIterator.Object);
 
         // Act
         var result = await _service.SearchAsync(query);
-        capturedQueryDefinition = _mockContainer.Invocations
-            .Select(invocation => invocation.Arguments.FirstOrDefault())
-            .OfType<QueryDefinition>()
-            .LastOrDefault();
 
         // Assert
         Assert.AreEqual(1, result.Count());
