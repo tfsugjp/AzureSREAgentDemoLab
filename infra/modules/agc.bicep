@@ -39,8 +39,8 @@ resource federatedCredential 'Microsoft.ManagedIdentity/userAssignedIdentities/f
   }
 }
 
-var agcVnetName = split(agcSubnetId, '/')[10]
-var agcSubnetName = split(agcSubnetId, '/')[12]
+var agcVnetName = split(agcSubnetId, '/')[8]
+var agcSubnetName = split(agcSubnetId, '/')[10]
 
 resource agcVnet 'Microsoft.Network/virtualNetworks@2024-05-01' existing = {
   name: agcVnetName
