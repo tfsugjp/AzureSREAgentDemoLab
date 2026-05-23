@@ -1,6 +1,6 @@
 # Azure SRE Agent 20-Minute Demo Scenario
 
-This is an **executable, time-boxed scenario** demonstrating how Azure SRE Agent detects incidents, integrates with Azure DevOps, and suggests resolutions using memory and reasoning.
+This is an **executable, time-boxed scenario** demonstrating how Azure SRE Agent detects incidents, opens a downstream ticket in Azure DevOps, GitHub, or both, and suggests resolutions using memory and reasoning.
 
 **Total Duration: 20 minutes**
 
@@ -8,11 +8,11 @@ This is an **executable, time-boxed scenario** demonstrating how Azure SRE Agent
 
 ## Scenario Overview
 
-**Story**: A production incident has been detected in the Order Service. High latency is detected by Azure Monitor, which automatically creates a work item in Azure DevOps. The SRE Agent investigates the incident using telemetry data and runbook knowledge, then recommends a resolution.
+**Story**: A production incident has been detected in the Order Service. High latency is detected by Azure Monitor, which automatically creates an incident record in Azure DevOps, a GitHub issue, or both. The SRE Agent investigates the incident using telemetry data and runbook knowledge, then recommends a resolution.
 
 **Expected Flow**:
 1. Trigger incident (simulate traffic) — **2 min**
-2. Alert detection and work item creation — **3 min**
+2. Alert detection and ticket creation — **3 min**
 3. SRE Agent investigation — **8 min**
 4. Resolution and verification — **7 min**
 
@@ -25,8 +25,17 @@ This is an **executable, time-boxed scenario** demonstrating how Azure SRE Agent
 Required:
 - Azure CLI with access to your resource group
 - `curl` or `http` CLI tool (for generating load)
-- Azure DevOps account with access to `SRE-Demo` project
+- Azure DevOps account with access to `SRE-Demo` project if you use the Azure DevOps route
+- GitHub repository access if you use the GitHub route
 - SRE Agent instance configured and running
+
+### Choose Your Ticket Destination
+
+| Route | What you verify in Phase 2 |
+|---|---|
+| Azure DevOps only | Azure DevOps work item |
+| GitHub only | GitHub issue |
+| Azure DevOps + GitHub | Both tickets created from the same alert |
 
 ---
 
@@ -135,7 +144,7 @@ az monitor log-analytics query `
 
 ---
 
-## Phase 2: Alert Detection & Work Item Creation (3 minutes)
+## Phase 2: Alert Detection & Ticket Creation (3 minutes)
 
 ### 2.1 Monitor Alert Rule Status
 
@@ -180,51 +189,51 @@ Last Triggered: <timestamp>
 Severity: 2 (Warning)
 ```
 
-### 2.2 Verify Azure DevOps Work Item Created
+### 2.2 Verify the Ticket Was Created
 
-The Action Group should have triggered Azure DevOps API to create a work item. Check Azure DevOps:
+The Action Group should have triggered your Azure-native relay and created the downstream ticket selected for the demo.
 
-1. Navigate to **Azure DevOps → SRE-Demo Project → Boards**
-2. Look for a new **Bug** or **Task** with title like:
-   - "⚠️ Alert: Server response time exceeded threshold"
-   - "🔴 Incident: High latency detected in Order Service"
+#### Option A: Azure DevOps
 
-3. Click the work item to view details:
-   ```
-   Title: ⚠️ Alert: Server response time exceeded threshold
-   Description: 
-     - Alert Time: 2024-XX-XX HX:XX:XX UTC
-     - Metric: Server Response Time
-     - Threshold: 500ms
-     - Current Value: 750ms
-     - Service: Order Service (Catalog Service / Notification Service)
-     - Alert ID: <guid>
-   
-   Tags: sre-agent-demo, incident, auto-generated
-   ```
+1. Navigate to **Azure DevOps -> SRE-Demo Project -> Boards**
+2. Look for a new **Bug** or **Task** with a title like:
+   - `[SRE] High latency detected in Order Service`
+   - `[SRE] Server response time exceeded threshold`
+3. Confirm it includes alert rule, threshold, current value, impacted service, and portal links
 
-**Expected Result**: 
-- Work item created within 1-2 minutes of alert firing
+#### Option B: GitHub
+
+1. Navigate to **GitHub -> tfsugjp/GlobalAzureDemo2026 -> Issues**
+2. Look for a new issue with a title like:
+   - `[SRE] High latency detected in Order Service`
+   - `[SRE] Server response time exceeded threshold`
+3. Confirm it includes labels such as `sre-agent-demo`, `incident`, and `azure-monitor`
+
+#### Option C: Azure DevOps + GitHub
+
+Verify that both of the above records were created from the same alert and that they share the same alert ID or correlation reference.
+
+**Expected Result**:
+- Ticket created within 1-2 minutes of alert firing
 - Contains full alert context
-- Status: "To Do"
 - Ready for SRE Agent investigation
 
-**If no work item appears**:
-- Check Action Group webhook configuration
-- Verify Azure DevOps PAT token is valid
-- Check Azure DevOps API permissions
+**If no ticket appears**:
+- Check the Action Group receiver configuration
+- Check the Logic App or Azure Function run history
+- Verify Azure DevOps or GitHub credentials in the relay
 
 ---
 
 ## Phase 3: SRE Agent Investigation (8 minutes)
 
-### 3.1 SRE Agent Reads Incident from Azure DevOps
+### 3.1 SRE Agent Reads the Incident Record
 
-The SRE Agent reads the newly created work item and begins investigation:
+The SRE Agent reads the newly created work item, issue, or both and begins investigation:
 
 ```
 SRE Agent Task:
-1. Read work item from Azure DevOps
+1. Read incident ticket from Azure DevOps, GitHub, or both
 2. Extract alert context (metric, threshold, service)
 3. Query Log Analytics for supporting data
 4. Access Memory/Runbooks
@@ -340,7 +349,7 @@ Recommended Action:
 
 ### 4.1 SRE Agent Suggests Action Items
 
-Based on reasoning, the SRE Agent adds a comment to the work item:
+Based on reasoning, the SRE Agent adds a comment to the work item, issue, or both:
 
 ```
 Comment from SRE Agent:
@@ -464,23 +473,25 @@ az monitor log-analytics query `
 Write-Host "✅ Response time should be < 300ms now"
 ```
 
-### 4.4 Update Work Item Status
+### 4.4 Update the Ticket Status
 
-In Azure DevOps, update the work item:
+Update the downstream record you chose for the demo:
 
-1. Click the work item in **SRE-Demo** project
-2. Change status from **To Do** → **Done**
-3. Add resolution comment:
-   ```
-   Resolution Applied:
-   - Scaled Order Service to 3 replicas
-   - Response time improved from 750ms to 200ms
-   - Alert threshold: 500ms ✅ RESOLVED
-   
-   SRE Agent Feedback: Accurate diagnosis confirmed
-   Root Cause: Capacity exceeded under synthetic load
-   ```
-4. Click **Save**
+#### Azure DevOps
+
+1. Open the work item in **SRE-Demo**
+2. Change status from **To Do** to **Done**
+3. Add a resolution comment with the scaling change and the improved latency
+
+#### GitHub
+
+1. Open the incident issue
+2. Add a comment with the scaling change and the improved latency
+3. Close the issue
+
+#### Azure DevOps + GitHub
+
+Update both records and include a cross-link between them if your relay created them separately
 
 ---
 
@@ -490,9 +501,9 @@ In Azure DevOps, update the work item:
 - Command executed successfully
 - Metrics visible in Application Insights
 
-✅ **Phase 2**: Alert detected and work item created
+✅ **Phase 2**: Alert detected and downstream ticket created
 - Alert rule status shows "Fired"
-- Azure DevOps work item visible in SRE-Demo project
+- Ticket visible in the selected destination
 
 ✅ **Phase 3**: SRE Agent investigated incident
 - Agent queried Log Analytics
@@ -523,7 +534,7 @@ In Azure DevOps, update the work item:
 ## Key Learnings
 
 1. **Observability Foundation**: OpenTelemetry, Application Insights, Log Analytics detect issues quickly
-2. **Incident Response Automation**: Azure Monitor alerts trigger Azure DevOps work items automatically
+2. **Incident Response Automation**: Azure Monitor alerts can open Azure DevOps work items, GitHub issues, or both
 3. **Agent Memory**: SRE Agent runbooks provide consistent, documented response procedures
 4. **Agent Reasoning**: Correlating metrics with runbooks suggests accurate root causes
 5. **Feedback Loop**: Work item status and comments improve SRE Agent's future recommendations
@@ -561,14 +572,15 @@ After completing the demo:
 - Check evaluation period: Alert needs 5+ minutes of data
 - Verify metric emission: Check Application Insights
 
-### Work Item Not Created
-- Check Action Group webhook URL
-- Verify Azure DevOps PAT token
-- Check DevOps API permissions
+### Ticket Not Created
+- Check the Action Group receiver target
+- Verify the Logic App or Azure Function run result
+- Verify Azure DevOps or GitHub authentication
 
-### SRE Agent Doesn't See Work Item
+### SRE Agent Doesn't See the Ticket
 - Verify GitHub Connector is registered
-- Check Azure DevOps connector configuration
+- Check Azure DevOps connector configuration if using Azure DevOps
+- Check GitHub issue permissions if using GitHub
 - Review SRE Agent logs for errors
 
 ---

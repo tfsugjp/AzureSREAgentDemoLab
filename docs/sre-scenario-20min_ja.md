@@ -1,6 +1,6 @@
 # Azure SRE Agent 20 分デモシナリオ
 
-このガイドは、Azure SRE Agent がインシデントを検出し、Azure DevOps と統合して解決を提案する**実行可能で時間制限付きのシナリオ**です。
+このガイドは、Azure SRE Agent がインシデントを検出し、Azure DevOps、GitHub、またはその両方へチケットを作成して解決を提案する**実行可能で時間制限付きのシナリオ**です。
 
 **総所要時間: 20 分**
 
@@ -8,11 +8,11 @@
 
 ## シナリオの概要
 
-**ストーリー**: Order Service で本番インシデントが検出されました。高レイテンシが Azure Monitor により検出され、Azure DevOps に作業項目が自動作成されます。SRE Agent がテレメトリとランブック知識を使用してインシデントを調査し、解決を提案します。
+**ストーリー**: Order Service で本番インシデントが検出されました。高レイテンシが Azure Monitor により検出され、Azure DevOps の作業項目、GitHub Issue、またはその両方が自動作成されます。SRE Agent がテレメトリとランブック知識を使用してインシデントを調査し、解決を提案します。
 
 **想定フロー**:
 1. インシデント トリガー (トラフィック生成) — **2 分**
-2. アラート検出と作業項目作成 — **3 分**
+2. アラート検出とチケット作成 — **3 分**
 3. SRE Agent による調査 — **8 分**
 4. 解決と検証 — **7 分**
 
@@ -33,9 +33,17 @@ bash trigger-incident-demo.sh -e $ORDER_SERVICE_ENDPOINT -c $CONCURRENT_REQUESTS
 - Order Service のレスポンス タイムが増加
 - Application Insights にメトリクスが表示 (1-2 分以内)
 
+## 連携先を選ぶ
+
+| ルート | フェーズ 2 で確認するもの |
+|---|---|
+| Azure DevOps のみ | Azure DevOps 作業項目 |
+| GitHub のみ | GitHub Issue |
+| Azure DevOps + GitHub | 両方のチケット |
+
 ---
 
-## フェーズ 2: アラート検出と作業項目作成 (3 分)
+## フェーズ 2: アラート検出とチケット作成 (3 分)
 
 ### 2.1 アラート ルール ステータスを確認
 
@@ -53,15 +61,28 @@ Last Triggered: <timestamp>
 Severity: 2 (警告)
 ```
 
-### 2.2 Azure DevOps で作業項目を確認
+### 2.2 連携先のチケットを確認
 
-1. **Azure DevOps → SRE-Demo Project → Boards**
-2. 新しい作業項目を探す:
-   - タイトル: "⚠️ Alert: Server response time exceeded threshold"
-   - 詳細: アラート コンテキスト (メトリクス、しきい値、現在値)
+#### Azure DevOps
 
-**期待される結果**: 
-- 作業項目が 1-2 分以内に作成
+1. **Azure DevOps -> SRE-Demo Project -> Boards**
+2. 新しい作業項目を確認:
+   - タイトル例: `[SRE] High latency detected in Order Service`
+   - アラート名、しきい値、現在値、対象サービスが入っていること
+
+#### GitHub
+
+1. **GitHub -> tfsugjp/GlobalAzureDemo2026 -> Issues**
+2. 新しい Issue を確認:
+   - タイトル例: `[SRE] High latency detected in Order Service`
+   - `sre-agent-demo`, `incident`, `azure-monitor` などのラベルが付いていること
+
+#### Azure DevOps + GitHub
+
+同じアラート ID または相関 ID で、両方にチケットが作成されていることを確認します。
+
+**期待される結果**:
+- チケットが 1-2 分以内に作成
 - 全アラート コンテキストを含む
 
 ---
@@ -144,23 +165,34 @@ az monitor log-analytics query \
 # 期待値: < 300ms
 ```
 
-### 4.3 作業項目のステータスを更新
+### 4.3 チケットのステータスを更新
 
-Azure DevOps で:
+#### Azure DevOps
+
 1. 作業項目を開く
 2. ステータスを **Done** に変更
 3. コメントを追加:
    ```
    解決: Order Service を 3 レプリカにスケール
-   結果: レスポンス タイム 750ms → 200ms
+   結果: レスポンス タイム 750ms -> 200ms
    ```
+
+#### GitHub
+
+1. Issue を開く
+2. 同じ内容のコメントを追加
+3. Issue を Close する
+
+#### Azure DevOps + GitHub
+
+両方のチケットを更新し、必要なら相互リンクを残します。
 
 ---
 
 ## デモ完了チェックリスト
 
 ✅ **フェーズ 1**: 合成負荷生成成功
-✅ **フェーズ 2**: アラート検出と作業項目作成確認
+✅ **フェーズ 2**: アラート検出とチケット作成確認
 ✅ **フェーズ 3**: SRE Agent がテレメトリを分析
 ✅ **フェーズ 4**: Service をスケール、解決を検証
 
@@ -170,7 +202,7 @@ Azure DevOps で:
 
 - アラート評価期間を短縮 (デフォルト: 5 分 → 2 分)
 - Log Analytics クエリを事前に準備
-- Azure DevOps プロジェクトを事前に作成
+- Azure DevOps プロジェクトまたは GitHub Issue ラベルを事前に準備
 
 ---
 
@@ -180,9 +212,10 @@ Azure DevOps で:
 - メトリクス名を確認
 - Application Insights でテレメトリを確認
 
-### 作業項目が作成されない
-- Service Principal の権限を確認
-- Action Group の Webhook URL を確認
+### チケットが作成されない
+- Action Group の送信先を確認
+- Logic App または Azure Function の実行結果を確認
+- Azure DevOps または GitHub の認証を確認
 
 ---
 

@@ -622,7 +622,7 @@ curl -s -o /dev/null -w "%{http_code}" \
 
 ## Azure SRE Agent Demo Integration
 
-This repository includes a **complete, executable 20-minute demo** showing how the Azure SRE Agent detects incidents, integrates with Azure DevOps for work item tracking, and uses memory & reasoning to suggest resolutions.
+This repository includes a **complete, executable 20-minute demo** showing how the Azure SRE Agent detects incidents, routes them to Azure DevOps, GitHub, or both, and uses memory & reasoning to suggest resolutions.
 
 ### Quick Start
 
@@ -641,6 +641,7 @@ This repository includes a **complete, executable 20-minute demo** showing how t
 
 ✅ **Azure Monitor Alerts** — Auto-detect latency & error rate anomalies
 ✅ **Azure DevOps Integration** — Work items created automatically
+✅ **GitHub Integration** — Issues can be created from the same Azure Monitor incident
 ✅ **SRE Agent Memory & Runbooks** — Knowledge base for incident response
 ✅ **Agent Reasoning** — Suggests root causes with confidence scores
 ✅ **End-to-End Demo** — Executable in 20 minutes
@@ -648,7 +649,9 @@ This repository includes a **complete, executable 20-minute demo** showing how t
 ### Documentation
 
 - **[SRE Agent Setup Guide](./docs/sre-agent-setup.md)** — Complete setup instructions + prerequisites
+- **[SRE Agent Setup Guide (Japanese)](./docs/sre-agent-setup_ja.md)** — 日本語版セットアップガイド
 - **[20-Minute Scenario](./docs/sre-scenario-20min.md)** — Executable demo with expected outputs
+- **[20-Minute Scenario (Japanese)](./docs/sre-scenario-20min_ja.md)** — 日本語版デモシナリオ
 - **[Azure SRE Agent Official Docs](https://sre.azure.com)** — Full reference
 
 ### Architecture
@@ -660,7 +663,9 @@ Log Analytics (30-day retention)
     ↓
 Alert Rules (latency, error rate)
     ↓
-Action Group → Azure DevOps Work Item
+Action Group → Logic App / Azure Function
+    ↓
+Azure DevOps Work Item and/or GitHub Issue
     ↓
 SRE Agent (reads incident + memory + telemetry)
     ↓
@@ -670,7 +675,7 @@ Agent Reasoning → Suggests root cause & resolution
 ### Resources Deployed (when enabled)
 
 - 3 Metric Alert Rules (latency, error rate, custom logs)
-- 1 Action Group (routes to Azure DevOps)
+- 1 Action Group (routes to Azure-native relay for Azure DevOps and/or GitHub)
 - 1 Log Query Alert (custom incident detection)
 - Diagnostic Settings on Container Apps Environment
 

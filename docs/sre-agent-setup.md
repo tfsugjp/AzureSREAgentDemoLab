@@ -1,13 +1,14 @@
 # Azure SRE Agent Demo Setup Guide
 
-This guide walks you through setting up the Azure SRE Agent integration with the GlobalAzureDemo2026 application for incident detection and Azure DevOps automation.
+This guide walks you through setting up the Azure SRE Agent integration with the GlobalAzureDemo2026 application for incident detection and incident routing to Azure DevOps, GitHub, or both.
 
 ## Prerequisites
 
 - Azure subscription with appropriate permissions (Owner or Contributor role)
 - Azure CLI (`az`) installed
 - GitHub account with access to the GlobalAzureDemo2026 repository
-- Azure DevOps organization and project
+- Azure DevOps organization and project (optional, if using Azure DevOps routing)
+- GitHub repository admin or maintainer access (required for GitHub issue routing)
 - PowerShell 7+ (for Windows) or Bash (for macOS/Linux)
 
 ### Azure Services Required
@@ -18,7 +19,16 @@ This guide walks you through setting up the Azure SRE Agent integration with the
 - Azure Application Insights
 - Azure Log Analytics Workspace
 - Azure Monitor (Alerts, Action Groups)
-- Azure DevOps (for work item tracking)
+- Logic Apps or Azure Functions (recommended Azure-native relay for ticket creation)
+- Azure DevOps (optional, for work item tracking)
+
+## Supported Integration Patterns
+
+| Pattern | Ticket destination | Recommended use |
+|---|---|---|
+| Azure DevOps only | Azure DevOps work items | Teams already operating in Boards and Pipelines |
+| GitHub only | GitHub issues | Teams already running engineering follow-up in GitHub |
+| Azure DevOps + GitHub | Work item plus GitHub issue | Incident tracked in Boards, engineering follow-up in GitHub |
 
 ---
 
@@ -52,15 +62,15 @@ Incident Detection Flow:
               ▼
 ┌─────────────────────────────────────────────────────┐
 │ 5. Action Group routes notification                │
-│    (Email, Webhook, Azure DevOps)                  │
+│    (Logic App or Azure Function webhook)           │
 └─────────────┬───────────────────────────────────────┘
-              │ REST API Call
+              │ Azure-native relay
               ▼
 ┌─────────────────────────────────────────────────────┐
-│ 6. Azure DevOps Work Item created                  │
-│    (Incident report for SRE Agent)                 │
+│ 6. Incident ticket created                         │
+│    (Azure DevOps, GitHub, or both)                 │
 └─────────────┬───────────────────────────────────────┘
-              │ Work Item Details
+              │ Ticket details
               ▼
 ┌─────────────────────────────────────────────────────┐
 │ 7. SRE Agent reads incident & memory               │
@@ -85,6 +95,8 @@ export LOCATION="westus3"
 export AZURE_SUBSCRIPTION_ID="<your-subscription-id>"
 export AZURE_DEVOPS_ORG_URL="https://dev.azure.com/<your-org>"
 export AZURE_DEVOPS_PROJECT="SRE-Demo"
+export GITHUB_OWNER="<your-github-owner>"
+export GITHUB_REPO="GlobalAzureDemo2026"
 ```
 
 **PowerShell 7:**
@@ -95,6 +107,8 @@ $env:LOCATION = "westus3"
 $env:AZURE_SUBSCRIPTION_ID = "<your-subscription-id>"
 $env:AZURE_DEVOPS_ORG_URL = "https://dev.azure.com/<your-org>"
 $env:AZURE_DEVOPS_PROJECT = "SRE-Demo"
+$env:GITHUB_OWNER = "<your-github-owner>"
+$env:GITHUB_REPO = "GlobalAzureDemo2026"
 ```
 
 ### 1.2 Create Resource Group
@@ -180,7 +194,7 @@ az deployment group create `
 
 ## Step 3: Configure GitHub Connector
 
-The SRE Agent uses GitHub Connectors to access repositories and create issues.
+The SRE Agent uses GitHub connectors to read repository context and, if you choose the GitHub route, create or update issues.
 
 ### 3.1 Create GitHub Personal Access Token (PAT)
 
@@ -202,14 +216,14 @@ Connector Type: GitHub
 Name: GlobalAzureDemo-Repo
 Repository: tfsugjp/GlobalAzureDemo2026
 Authentication: Personal Access Token (from Step 3.1)
-Permissions: Read logs, create issues, read project history
+Permissions: Read repository content, read project history, create and update issues
 ```
 
 ---
 
 ## Step 4: Configure Azure DevOps Integration
 
-The Action Group routes incident alerts to Azure DevOps by creating work items automatically.
+Use this section when your incident workflow includes Azure DevOps work items.
 
 ### 4.1 Create Azure DevOps Service Principal
 
@@ -231,24 +245,127 @@ The Action Group routes incident alerts to Azure DevOps by creating work items a
 3. Copy and store the secret securely
 4. Use this in Alert Action Groups
 
-### 4.4 Configure Action Group
+### 4.4 Register Azure DevOps in SRE Agent
 
-The Bicep module creates an Action Group automatically. To manually configure webhook to Azure DevOps:
+If the SRE Agent should read or comment on Azure DevOps work items, register the Azure DevOps connector in the agent as well.
 
-1. In Azure Portal, go to **Monitor → Action Groups**
-2. Find the action group created by the SRE module
-3. Add **Webhook** receiver:
-   - **Name**: `AzureDevOps-WorkItem`
-   - **URL**: `https://dev.azure.com/<org>/<project>/_apis/wit/workitems?api-version=7.0`
-   - **Use common alert schema**: Enabled
+Typical configuration:
+
+```text
+Connector Type: Azure DevOps
+Organization: https://dev.azure.com/<your-org>
+Project: SRE-Demo
+Permissions: Read and update work items, read pipeline and deployment history
+```
 
 ---
 
-## Step 5: Configure SRE Agent Memory & Knowledge Base
+## Step 5: Configure Incident Routing
+
+Azure Monitor should remain the incident source. For Azure DevOps and GitHub ticket creation, use an Azure-native relay such as **Logic Apps** or **Azure Functions** behind the Action Group webhook. This keeps the incident flow Azure-based while still allowing GitHub collaboration.
+
+### 5.1 Why a Relay Is Recommended
+
+- Azure Monitor Action Groups can emit the common alert schema reliably
+- Logic Apps and Azure Functions can authenticate to Azure DevOps and GitHub cleanly
+- The same Azure alert can create one or two downstream tickets with consistent formatting
+- You can enrich the payload with resource links, KQL query links, and severity mappings
+
+### 5.2 Route A: Azure DevOps Only
+
+Recommended when the operations team triages incidents in Boards.
+
+Flow:
+
+```text
+Azure Monitor Alert
+  -> Action Group
+  -> Logic App / Azure Function
+  -> Azure DevOps Work Item
+  -> SRE Agent reads work item + telemetry
+```
+
+Suggested work item fields:
+
+- **Title**: `[SRE] High latency detected in Order Service`
+- **Type**: Bug or Issue
+- **Tags**: `sre-agent-demo`, `incident`, `azure-monitor`
+- **Description**:
+  - alert rule name
+  - resource ID
+  - fired time
+  - portal link
+  - Log Analytics query link
+
+### 5.3 Route B: GitHub Only
+
+Recommended when engineering follow-up lives entirely in GitHub Issues.
+
+Flow:
+
+```text
+Azure Monitor Alert
+  -> Action Group
+  -> Logic App / Azure Function
+  -> GitHub Issue
+  -> SRE Agent reads issue + telemetry
+```
+
+Suggested GitHub issue fields:
+
+- **Title**: `[SRE] High latency detected in Order Service`
+- **Labels**: `sre-agent-demo`, `incident`, `azure-monitor`
+- **Body**:
+  - summary of the alert
+  - impacted service
+  - severity and threshold
+  - Azure portal and KQL links
+  - suggested runbook
+
+GitHub authentication options:
+
+- GitHub App (recommended for teams)
+- PAT with `repo` scope (simple demo setup)
+
+### 5.4 Route C: Azure DevOps + GitHub
+
+Recommended when operations triage in Azure DevOps but engineering remediation is tracked in GitHub.
+
+Flow:
+
+```text
+Azure Monitor Alert
+  -> Action Group
+  -> Logic App / Azure Function
+  -> Azure DevOps Work Item
+  -> GitHub Issue
+  -> SRE Agent correlates both tickets
+```
+
+Recommended ownership split:
+
+- **Azure DevOps**: incident record, severity, response timeline, approvals
+- **GitHub**: code fix, PR links, engineering discussion, post-incident tasks
+
+### 5.5 Payload Mapping
+
+Map the Azure Monitor common alert schema into stable ticket fields:
+
+| Alert field | Azure DevOps | GitHub |
+|---|---|---|
+| `essentials.alertRule` | Title prefix and description | Issue title and body |
+| `essentials.severity` | Priority / Severity | Label such as `sev2` |
+| `essentials.firedDateTime` | Created date note | Timeline in issue body |
+| `alertContext.condition` | Work item description | Issue body details |
+| Resource ID / resource name | Custom field or tag | Markdown details block |
+
+---
+
+## Step 6: Configure SRE Agent Memory & Knowledge Base
 
 The SRE Agent uses memory to store operational knowledge about your services.
 
-### 5.1 Create Runbook Templates
+### 6.1 Create Runbook Templates
 
 Create documents that describe how to respond to common incidents:
 
@@ -292,7 +409,7 @@ Resolution Steps:
   5. Review rate limiting on any upstream services
 ```
 
-### 5.2 Store Runbooks in SRE Agent Memory
+### 6.2 Store Runbooks in SRE Agent Memory
 
 Refer to: [Azure SRE Agent - Memory & Knowledge Base](https://learn.microsoft.com/en-us/azure/sre-agent/memory)
 
@@ -301,7 +418,7 @@ Add runbooks to your SRE Agent configuration:
 - Tag with service names: `catalog`, `order`, `notification`
 - Set urgency levels: `critical`, `high`, `medium`
 
-### 5.3 Enable Agent Reasoning
+### 6.3 Enable Agent Reasoning
 
 Configure the SRE Agent to use advanced reasoning for incident analysis:
 
@@ -315,9 +432,9 @@ Enable:
 
 ---
 
-## Step 6: Verify Setup
+## Step 7: Verify Setup
 
-### 6.1 Check Resources Created
+### 7.1 Check Resources Created
 
 **Bash:**
 ```bash
@@ -365,24 +482,25 @@ az monitor action-group list `
   --query "[].name" -o tsv
 ```
 
-### 6.2 Test Connectivity
+### 7.2 Test Connectivity
 
-1. **Test GitHub Connector**: Push a test commit to the repository, verify SRE Agent can see it
-2. **Test Azure DevOps Integration**: Create a test work item in Azure DevOps, verify SRE Agent can read it
-3. **Test Alerts**: Generate synthetic traffic, verify alert fires and work item is created
+1. **Test GitHub connector**: Push a test commit to the repository and verify the SRE Agent can see it
+2. **Test Azure DevOps connector**: Create a test work item and verify the SRE Agent can read it
+3. **Test GitHub issue route**: Trigger a test issue and verify the SRE Agent can read and comment on it
+4. **Test alerts**: Generate synthetic traffic and verify the Azure Monitor alert creates the expected downstream ticket
 
 ---
 
-## Step 7: Run the 20-Minute Demo Scenario
+## Step 8: Run the 20-Minute Demo Scenario
 
 See: [SRE Agent 20-Minute Demo Scenario](./sre-scenario-20min.md)
 
 This scenario includes:
 1. Triggering a synthetic incident
 2. Observing alert detection
-3. Work item creation in Azure DevOps
+3. Ticket creation in Azure DevOps, GitHub, or both
 4. SRE Agent investigation using memory
-5. Resolution and verification
+5. Resolution and ticket closure verification
 
 ---
 
@@ -397,8 +515,15 @@ This scenario includes:
 ### Azure DevOps Work Item Not Created
 
 - **Check**: Service Principal permissions in Azure DevOps
-- **Check**: Webhook URL in Action Group is correct
-- **Solution**: Test webhook manually with `curl` or Postman
+- **Check**: Logic App or Azure Function authentication to Azure DevOps
+- **Solution**: Replay the alert payload through the relay endpoint
+
+### GitHub Issue Not Created
+
+- **Check**: GitHub App or PAT permissions include issue creation
+- **Check**: Repository owner and repository name are correct
+- **Check**: Logic App or Azure Function mapping for labels and body fields
+- **Solution**: Send a sample alert payload and verify the GitHub API response
 
 ### SRE Agent Cannot Access Services
 
@@ -419,8 +544,9 @@ This scenario includes:
 1. **Run the 20-minute demo scenario** (see Step 7)
 2. **Customize thresholds** based on your actual SLA requirements
 3. **Add more alert rules** for other services (API latency, data consistency)
-4. **Integrate with Slack/Teams** via additional Action Group receivers
-5. **Enable advanced reasoning** in SRE Agent for automated remediation
+4. **Add both ticket routes** if you currently use only one
+5. **Integrate with Slack/Teams** via additional Action Group receivers
+6. **Enable advanced reasoning** in SRE Agent for automated remediation
 
 ---
 
