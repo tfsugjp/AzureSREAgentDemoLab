@@ -28,20 +28,21 @@ param disableAuthentication bool = false
 @description('Optional extra tags applied to all resources.')
 param tags object = {}
 
-@description('Enable SRE Agent demo resources (alerts, action groups, Azure DevOps integration).')
+@description('Enable SRE Agent demo resources (alerts, action groups, incident routing).')
 param enableSreDemo bool = false
 
-@description('Azure DevOps Organization URL for SRE Agent integration (e.g., https://dev.azure.com/myorg).')
-param azureDevOpsOrgUrl string = ''
+@description('Optional Logic App resource ID used to route Azure Monitor incidents downstream.')
+param incidentRelayResourceId string = ''
 
-@description('Azure DevOps Project Name where SRE incidents will be tracked.')
-param azureDevOpsProjectName string = 'SRE-Demo'
+@description('Optional Logic App callback URL used by the Action Group receiver.')
+@secure()
+param incidentRelayCallbackUrl string = ''
 
 @description('Response time threshold in milliseconds for triggering SRE alerts.')
 param responseTimeThresholdMs int = 500
 
-@description('Error rate threshold in percentage for triggering SRE alerts.')
-param errorRateThresholdPercent int = 5
+@description('Failed request count threshold for triggering SRE alerts.')
+param failedRequestCountThreshold int = 5
 
 var envToken = toLower(take(environmentName, 12))
 var compactEnvToken = replace(envToken, '-', '')
@@ -343,10 +344,10 @@ module sreResources './modules/sre-resources.bicep' = if (enableSreDemo) {
     logAnalyticsWorkspaceId: logAnalyticsWorkspace.id
     applicationInsightsId: applicationInsights.id
     containerAppsEnvironmentId: containerAppsEnvironment.id
-    azureDevOpsOrgUrl: azureDevOpsOrgUrl
-    azureDevOpsProjectName: azureDevOpsProjectName
+    incidentRelayResourceId: incidentRelayResourceId
+    incidentRelayCallbackUrl: incidentRelayCallbackUrl
     responseTimeThresholdMs: responseTimeThresholdMs
-    errorRateThresholdPercent: errorRateThresholdPercent
+    failedRequestCountThreshold: failedRequestCountThreshold
     tags: commonTags
   }
 }

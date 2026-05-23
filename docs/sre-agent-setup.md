@@ -135,33 +135,14 @@ az group create `
 
 The infrastructure includes conditional deployment of SRE resources. Deploy the main template with SRE parameters enabled:
 
-### 2.1 Update Bicep Parameters (infra/main.parameters.json)
+### 2.1 Gather the SRE Overlay Inputs
 
-Add the following parameters to your deployment:
+Before applying the SRE demo overlay, collect:
 
-```json
-{
-  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
-  "contentVersion": "1.0.0.0",
-  "parameters": {
-    "enableSreDemo": {
-      "value": true
-    },
-    "azureDevOpsOrgUrl": {
-      "value": "https://dev.azure.com/<your-org>"
-    },
-    "azureDevOpsProjectName": {
-      "value": "SRE-Demo"
-    },
-    "responseTimeThresholdMs": {
-      "value": 500
-    },
-    "errorRateThresholdPercent": {
-      "value": 5
-    }
-  }
-}
-```
+- the same `environmentName`, `entraTenantId`, `entraClientId`, and `entraAudience` values used for the base deployment
+- the **Logic App resource ID** or equivalent Azure relay resource ID
+- the **Logic App callback URL** from the HTTP trigger
+- the thresholds you want for latency and failed request count
 
 ### 2.2 Deploy Infrastructure
 
@@ -171,10 +152,16 @@ az deployment group create \
   --name "globalazdemo-sre-$(date +%s)" \
   --resource-group $RESOURCE_GROUP \
   --template-file infra/main.bicep \
-  --parameters infra/main.parameters.json \
-  --parameters enableSreDemo=true \
-                azureDevOpsOrgUrl=$AZURE_DEVOPS_ORG_URL \
-                azureDevOpsProjectName=$AZURE_DEVOPS_PROJECT
+  --parameters \
+    environmentName=$ENVIRONMENT_NAME \
+    entraTenantId=<your-tenant-id> \
+    entraClientId=<your-client-id> \
+    entraAudience=<your-audience> \
+    enableSreDemo=true \
+    incidentRelayResourceId=<logic-app-resource-id> \
+    incidentRelayCallbackUrl=<logic-app-callback-url> \
+    responseTimeThresholdMs=500 \
+    failedRequestCountThreshold=5
 ```
 
 **PowerShell 7:**
@@ -184,11 +171,19 @@ az deployment group create `
   --name $deploymentName `
   --resource-group $env:RESOURCE_GROUP `
   --template-file infra/main.bicep `
-  --parameters infra/main.parameters.json `
-  --parameters enableSreDemo=true `
-                azureDevOpsOrgUrl=$env:AZURE_DEVOPS_ORG_URL `
-                azureDevOpsProjectName=$env:AZURE_DEVOPS_PROJECT
+  --parameters `
+    environmentName=$env:ENVIRONMENT_NAME `
+    entraTenantId=<your-tenant-id> `
+    entraClientId=<your-client-id> `
+    entraAudience=<your-audience> `
+    enableSreDemo=true `
+    incidentRelayResourceId=<logic-app-resource-id> `
+    incidentRelayCallbackUrl=<logic-app-callback-url> `
+    responseTimeThresholdMs=500 `
+    failedRequestCountThreshold=5
 ```
+
+If you already deployed the base stack with `azd up`, this overlay deployment can be run afterward against the same resource group.
 
 ---
 

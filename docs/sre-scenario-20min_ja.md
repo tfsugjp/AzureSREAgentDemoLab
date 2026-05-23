@@ -48,6 +48,11 @@ bash trigger-incident-demo.sh -e $ORDER_SERVICE_ENDPOINT -c $CONCURRENT_REQUESTS
 ### 2.1 アラート ルール ステータスを確認
 
 ```bash
+ALERT_RULE_NAME=$(az monitor metrics alert list \
+  --resource-group $RESOURCE_GROUP \
+  --query "[?contains(name, 'high-latency')].name | [0]" \
+  --output tsv)
+
 az monitor metrics alert list \
   --resource-group $RESOURCE_GROUP \
   --query "[?contains(name, 'high-latency')]" \
@@ -152,9 +157,14 @@ az containerapp update \
 ### 4.2 解決を検証
 
 ```bash
+LOG_ANALYTICS_WS_ID=$(az monitor log-analytics workspace list \
+  --resource-group $RESOURCE_GROUP \
+  --query "[0].customerId" \
+  --output tsv)
+
 # レスポンス タイムを確認
 az monitor log-analytics query \
-  --workspace $LOG_ANALYTICS_WS \
+  --workspace $LOG_ANALYTICS_WS_ID \
   --analytics-query "
     requests
     | where timestamp > ago(5m) and name contains 'orders'

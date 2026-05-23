@@ -109,12 +109,15 @@ Check that Application Insights is recording the increased traffic:
 
 **Bash:**
 ```bash
-export LOG_ANALYTICS_WS="<your-workspace-name>"
+export LOG_ANALYTICS_WS_ID=$(az monitor log-analytics workspace list \
+  --resource-group $RESOURCE_GROUP \
+  --query "[0].customerId" \
+  --output tsv)
 export RESOURCE_GROUP="<your-resource-group>"
 
 # Query last 5 minutes of request metrics
 az monitor log-analytics query \
-  --workspace $LOG_ANALYTICS_WS \
+  --workspace $LOG_ANALYTICS_WS_ID \
   --analytics-query "
     requests
     | where timestamp > ago(5m)
@@ -126,8 +129,11 @@ az monitor log-analytics query \
 
 **PowerShell 7:**
 ```powershell
-$logAnalyticsWs = "<your-workspace-name>"
 $resourceGroup = "<your-resource-group>"
+$logAnalyticsWsId = az monitor log-analytics workspace list `
+  --resource-group $resourceGroup `
+  --query "[0].customerId" `
+  --output tsv
 
 $query = @"
 requests
@@ -137,7 +143,7 @@ requests
 "@
 
 az monitor log-analytics query `
-  --workspace $logAnalyticsWs `
+  --workspace $logAnalyticsWsId `
   --analytics-query $query `
   --resource-group $resourceGroup
 ```
@@ -152,7 +158,10 @@ The alert rule from the infrastructure should now be evaluating against the metr
 
 **Bash:**
 ```bash
-export ALERT_RULE_NAME="alert-high-latency-*"
+export ALERT_RULE_NAME=$(az monitor metrics alert list \
+  --resource-group $RESOURCE_GROUP \
+  --query "[?contains(name, 'high-latency')].name | [0]" \
+  --output tsv)
 
 # List all alert rules
 az monitor metrics alert list \
@@ -163,12 +172,17 @@ az monitor metrics alert list \
 # Check alert history (fired incidents)
 az monitor metrics alert history list \
   --resource-group $RESOURCE_GROUP \
-  --alert-name "alert-high-latency-*" \
+  --alert-name "$ALERT_RULE_NAME" \
   --output json | jq '.[0:5]'
 ```
 
 **PowerShell 7:**
 ```powershell
+$alertRuleName = az monitor metrics alert list `
+  --resource-group $env:RESOURCE_GROUP `
+  --query "[?contains(name, 'high-latency')].name | [0]" `
+  --output tsv
+
 # List all alert rules
 az monitor metrics alert list `
   --resource-group $env:RESOURCE_GROUP `
@@ -178,7 +192,7 @@ az monitor metrics alert list `
 # Check recent alert activities
 az monitor metrics alert history list `
   --resource-group $env:RESOURCE_GROUP `
-  --alert-name "alert-high-latency-*" `
+  --alert-name $alertRuleName `
   --output json | ConvertFrom-Json | Select-Object -First 5
 ```
 
@@ -188,6 +202,8 @@ Alert Rule Status: Fired
 Last Triggered: <timestamp>
 Severity: 2 (Warning)
 ```
+
+If `$ALERT_RULE_NAME` or `$alertRuleName` is empty, verify that the SRE overlay deployment completed successfully before checking history.
 
 ### 2.2 Verify the Ticket Was Created
 
@@ -438,8 +454,13 @@ az containerapp show \
   --query "properties.template.scale" --output json
 
 # Query current response times (should improve)
+LOG_ANALYTICS_WS_ID=$(az monitor log-analytics workspace list \
+  --resource-group $RESOURCE_GROUP \
+  --query "[0].customerId" \
+  --output tsv)
+
 az monitor log-analytics query \
-  --workspace $LOG_ANALYTICS_WS \
+  --workspace $LOG_ANALYTICS_WS_ID \
   --analytics-query "
     requests
     | where timestamp > ago(5m) and name contains 'orders'
@@ -459,6 +480,11 @@ az containerapp show `
   --query "properties.template.scale" --output json
 
 # Query current response times
+$logAnalyticsWsId = az monitor log-analytics workspace list `
+  --resource-group $env:RESOURCE_GROUP `
+  --query "[0].customerId" `
+  --output tsv
+
 $query = @"
 requests
 | where timestamp > ago(5m) and name contains 'orders'
@@ -466,7 +492,7 @@ requests
 "@
 
 az monitor log-analytics query `
-  --workspace $logAnalyticsWs `
+  --workspace $logAnalyticsWsId `
   --analytics-query $query `
   --resource-group $env:RESOURCE_GROUP
 

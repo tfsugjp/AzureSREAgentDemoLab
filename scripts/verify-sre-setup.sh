@@ -20,6 +20,12 @@ log_success() { echo -e "${GREEN}✅${NC} $1"; }
 log_warn() { echo -e "${YELLOW}⚠${NC} $1"; }
 log_error() { echo -e "${RED}❌${NC} $1"; }
 
+FAILURES=0
+
+record_failure() {
+    FAILURES=$((FAILURES + 1))
+}
+
 # Parse arguments
 RESOURCE_GROUP=""
 ENVIRONMENT_NAME=""
@@ -56,15 +62,20 @@ echo ""
 
 # Check 1: Log Analytics Workspace
 log_info "Checking Log Analytics Workspace..."
-LOG_ANALYTICS_WS=$(az monitor log-analytics workspace list \
+LOG_ANALYTICS_WS_NAME=$(az monitor log-analytics workspace list \
     --resource-group "$RESOURCE_GROUP" \
     --query "[0].name" \
     --output tsv 2>/dev/null || echo "")
+LOG_ANALYTICS_WS_ID=$(az monitor log-analytics workspace list \
+    --resource-group "$RESOURCE_GROUP" \
+    --query "[0].customerId" \
+    --output tsv 2>/dev/null || echo "")
 
-if [[ -z "$LOG_ANALYTICS_WS" ]]; then
+if [[ -z "$LOG_ANALYTICS_WS_NAME" || -z "$LOG_ANALYTICS_WS_ID" ]]; then
     log_error "No Log Analytics Workspace found"
+    record_failure
 else
-    log_success "Log Analytics Workspace: $LOG_ANALYTICS_WS"
+    log_success "Log Analytics Workspace: $LOG_ANALYTICS_WS_NAME"
 fi
 
 # Check 2: Application Insights
@@ -76,6 +87,7 @@ APP_INSIGHTS=$(az monitor app-insights component list \
 
 if [[ -z "$APP_INSIGHTS" ]]; then
     log_error "No Application Insights found"
+    record_failure
 else
     log_success "Application Insights: $APP_INSIGHTS"
 fi
@@ -84,7 +96,7 @@ fi
 log_info "Checking Alert Rules..."
 ALERT_COUNT=$(az monitor metrics alert list \
     --resource-group "$RESOURCE_GROUP" \
-    --query "length([])" \
+    --query "length(@)" \
     --output tsv 2>/dev/null || echo "0")
 
 if [[ "$ALERT_COUNT" -eq 0 ]]; then
@@ -106,6 +118,7 @@ ACTION_GROUP=$(az monitor action-group list \
 
 if [[ -z "$ACTION_GROUP" ]]; then
     log_warn "No SRE Action Group found. Deploy with enableSreDemo=true"
+    record_failure
 else
     log_success "Action Group: $ACTION_GROUP"
 fi
@@ -119,36 +132,49 @@ CONTAINER_APPS=$(az containerapp list \
 
 if [[ $(echo "$CONTAINER_APPS" | jq 'length') -eq 0 ]]; then
     log_error "No Container Apps found"
+    record_failure
 else
-    echo "$CONTAINER_APPS" | jq -r '.[] | "\(.name): \(.provisioning)"' | while read line; do
+    while IFS= read -r line; do
         if echo "$line" | grep -q "Succeeded"; then
             log_success "$line"
         else
             log_warn "$line"
+            record_failure
         fi
-    done
+    done < <(echo "$CONTAINER_APPS" | jq -r '.[] | "\(.name): \(.provisioning)"')
 fi
 
 # Check 6: Test query on Log Analytics
-log_info "Testing Log Analytics queries..."
-QUERY_RESULT=$(az monitor log-analytics query \
-    --workspace "$LOG_ANALYTICS_WS" \
-    --analytics-query "requests | where timestamp > ago(1h) | count" \
-    --output json 2>/dev/null | jq -r '.[0][0]' || echo "0")
+if [[ -n "$LOG_ANALYTICS_WS_ID" ]]; then
+    log_info "Testing Log Analytics queries..."
+    QUERY_RESULT=$(az monitor log-analytics query \
+        --workspace "$LOG_ANALYTICS_WS_ID" \
+        --analytics-query "requests | where timestamp > ago(1h) | count" \
+        --output json 2>/dev/null | jq -r '.[0][0]' || echo "0")
 
-if [[ "$QUERY_RESULT" -gt 0 ]]; then
-    log_success "Log Analytics working ($QUERY_RESULT requests in last hour)"
-else
-    log_warn "No recent request telemetry in Log Analytics"
+    if [[ "$QUERY_RESULT" -gt 0 ]]; then
+        log_success "Log Analytics working ($QUERY_RESULT requests in last hour)"
+    else
+        log_warn "No recent request telemetry in Log Analytics"
+    fi
 fi
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-log_success "Verification Report"
+if [[ "$FAILURES" -eq 0 ]]; then
+    log_success "Verification Report"
+else
+    log_warn "Verification Report"
+fi
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "✓ Prerequisites: All Azure resources present"
-echo "✓ Status: SRE Agent demo infrastructure ready"
+if [[ "$FAILURES" -eq 0 ]]; then
+    echo "✓ Prerequisites: All Azure resources present"
+    echo "✓ Status: SRE Agent demo infrastructure ready"
+else
+    echo "✗ One or more prerequisite checks failed"
+    echo "✗ Status: SRE Agent demo infrastructure is not ready"
+fi
 echo ""
 echo "To run the demo:"
 echo "1. Generate synthetic load:"
@@ -157,7 +183,11 @@ echo ""
 echo "2. Monitor alert status:"
 echo "   az monitor metrics alert list --resource-group $RESOURCE_GROUP"
 echo ""
-echo "3. Check Azure DevOps work items"
+echo "3. Check Azure DevOps work items or GitHub issues"
 echo ""
 echo "4. See detailed guide: docs/sre-scenario-20min.md"
 echo ""
+
+if [[ "$FAILURES" -ne 0 ]]; then
+    exit 1
+fi

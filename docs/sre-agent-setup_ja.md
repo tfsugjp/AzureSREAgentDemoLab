@@ -75,26 +75,35 @@ az group create \
 
 インフラストラクチャには SRE リソースの条件付きデプロイが含まれます。SRE パラメータを有効にしてデプロイします。
 
-### 2.1 Bicep パラメータを更新
+### 2.1 SRE オーバーレイ用の入力値を集める
 
-`infra/main.parameters.json` に以下を追加します:
+SRE デモ用オーバーレイを適用する前に、以下を準備します。
 
-```json
-{
-  "enableSreDemo": true,
-  "azureDevOpsOrgUrl": "https://dev.azure.com/<your-org>",
-  "azureDevOpsProjectName": "SRE-Demo",
-  "responseTimeThresholdMs": 500,
-  "errorRateThresholdPercent": 5
-}
-```
+- ベース デプロイで使った `environmentName`、`entraTenantId`、`entraClientId`、`entraAudience`
+- **Logic App の resource ID** など中継先の Azure リソース ID
+- HTTP トリガーの **callback URL**
+- レイテンシしきい値と失敗リクエスト数しきい値
 
 ### 2.2 インフラをデプロイ
 
 ```bash
-az login
-azd up
+az deployment group create \
+  --name globalazdemo-sre \
+  --resource-group $RESOURCE_GROUP \
+  --template-file infra/main.bicep \
+  --parameters \
+    environmentName=$ENVIRONMENT_NAME \
+    entraTenantId=<your-tenant-id> \
+    entraClientId=<your-client-id> \
+    entraAudience=<your-audience> \
+    enableSreDemo=true \
+    incidentRelayResourceId=<logic-app-resource-id> \
+    incidentRelayCallbackUrl=<logic-app-callback-url> \
+    responseTimeThresholdMs=500 \
+    failedRequestCountThreshold=5
 ```
+
+すでに `azd up` でベース環境を作成している場合は、同じリソース グループに対してこのオーバーレイ デプロイを後から実行できます。
 
 ---
 

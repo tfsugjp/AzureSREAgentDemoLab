@@ -57,7 +57,7 @@ function Write-Warn {
     Write-Host "⚠ $Message" -ForegroundColor Yellow
 }
 
-function Write-Error {
+function Write-ErrorMessage {
     param([string]$Message)
     Write-Host "❌ $Message" -ForegroundColor Red
 }
@@ -78,7 +78,7 @@ try {
     $azVersion = az version | ConvertFrom-Json | Select-Object -ExpandProperty 'azure-cli'
     Write-Success "Azure CLI found: $azVersion"
 } catch {
-    Write-Error "Azure CLI (az) not found. Please install: https://learn.microsoft.com/cli/azure/install-azure-cli"
+    Write-ErrorMessage "Azure CLI (az) not found. Please install: https://learn.microsoft.com/cli/azure/install-azure-cli"
     exit 1
 }
 
@@ -90,7 +90,7 @@ try {
     }
     Write-Success "Resource Group exists: $ResourceGroup"
 } catch {
-    Write-Error "Resource Group '$ResourceGroup' not found"
+    Write-ErrorMessage "Resource Group '$ResourceGroup' not found"
     exit 1
 }
 
@@ -150,16 +150,10 @@ Write-Host ""
 Write-Success "Setup validation complete!"
 Write-Host ""
 Write-Host "Next steps:"
-Write-Host "1. Update infra/main.parameters.json with SRE parameters:"
-Write-Host "   - enableSreDemo: true"
-Write-Host "   - azureDevOpsOrgUrl: $DevOpsOrgUrl"
-Write-Host "   - azureDevOpsProjectName: $DevOpsProject"
+Write-Host "1. Create or identify your Logic App / Azure Function relay for incident routing"
+Write-Host "2. Deploy the SRE overlay with explicit parameters:"
 Write-Host ""
-Write-Host "2. Deploy with azd:"
-Write-Host "   azd env set enableSreDemo true"
-Write-Host "   azd env set azureDevOpsOrgUrl `"$DevOpsOrgUrl`""
-Write-Host "   azd env set azureDevOpsProjectName `"$DevOpsProject`""
-Write-Host "   azd up"
+Write-Host "   az deployment group create --resource-group $ResourceGroup --template-file infra/main.bicep --parameters enableSreDemo=true incidentRelayResourceId=<relay-resource-id> incidentRelayCallbackUrl=<relay-callback-url> responseTimeThresholdMs=500 failedRequestCountThreshold=5"
 Write-Host ""
 Write-Host "3. Verify setup with:"
 Write-Host "   .\verify-sre-setup.ps1 -ResourceGroup $ResourceGroup -EnvironmentName $EnvironmentName"

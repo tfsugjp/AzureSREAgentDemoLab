@@ -13,21 +13,18 @@ param applicationInsightsId string
 @description('Container Apps Environment resource ID.')
 param containerAppsEnvironmentId string
 
-@description('Azure DevOps Organization URL (e.g., https://dev.azure.com/myorg).')
-param azureDevOpsOrgUrl string = ''
+@description('Optional Logic App resource ID that receives Azure Monitor incidents.')
+param incidentRelayResourceId string = ''
 
-@description('Azure DevOps Project Name where work items will be created.')
-param azureDevOpsProjectName string = 'SRE-Demo'
-
-@description('Azure DevOps PAT token for work item creation (optional for demo).')
+@description('Optional Logic App callback URL used by the Action Group receiver.')
 @secure()
-param azureDevOpsPatToken string = ''
+param incidentRelayCallbackUrl string = ''
 
 @description('Response time threshold in milliseconds for alert.')
 param responseTimeThresholdMs int = 500
 
-@description('Error rate threshold in percentage for alert.')
-param errorRateThresholdPercent int = 5
+@description('Failed request count threshold for alert evaluation.')
+param failedRequestCountThreshold int = 5
 
 @description('Minimum evaluation periods before alert triggers.')
 param alertEvaluationPeriods int = 2
@@ -41,8 +38,9 @@ var actionGroupName = take('ag-sre-${envToken}-${uniqueToken}', 128)
 var alertRuleHighLatencyName = take('alert-high-latency-${envToken}-${uniqueToken}', 260)
 var alertRuleHighErrorsName = take('alert-high-errors-${envToken}-${uniqueToken}', 260)
 var diagnosticSettingName = 'diag-sre-${envToken}'
+var hasIncidentRelay = !empty(incidentRelayResourceId) && !empty(incidentRelayCallbackUrl)
 
-// High Response Time Alert Rule
+// High response time alert rule
 resource alertRuleHighLatency 'Microsoft.Insights/metricAlerts@2018-03-01' = if (applicationInsightsId != '') {
   name: alertRuleHighLatencyName
   location: 'global'
@@ -61,7 +59,8 @@ resource alertRuleHighLatency 'Microsoft.Insights/metricAlerts@2018-03-01' = if 
       allOf: [
         {
           name: 'Server response time'
-          metricName: 'performanceCounters/processCpuPercentage'
+          criterionType: 'StaticThresholdCriterion'
+          metricName: 'requests/duration'
           operator: 'GreaterThan'
           threshold: responseTimeThresholdMs
           timeAggregation: 'Average'
@@ -69,17 +68,24 @@ resource alertRuleHighLatency 'Microsoft.Insights/metricAlerts@2018-03-01' = if 
         }
       ]
     }
-    actions: []
+    actions: hasIncidentRelay ? [
+      {
+        actionGroupId: actionGroup.id
+        webHookProperties: {
+          incidentType: 'high-latency'
+        }
+      }
+    ] : []
   }
 }
 
-// High Error Rate Alert Rule
+// High failed request alert rule
 resource alertRuleHighErrors 'Microsoft.Insights/metricAlerts@2018-03-01' = if (applicationInsightsId != '') {
   name: alertRuleHighErrorsName
   location: 'global'
   tags: tags
   properties: {
-    description: 'Alert when failed requests exceed threshold'
+    description: 'Alert when failed request count exceeds threshold'
     severity: 2
     enabled: true
     scopes: [
@@ -91,20 +97,28 @@ resource alertRuleHighErrors 'Microsoft.Insights/metricAlerts@2018-03-01' = if (
       'odata.type': 'Microsoft.Azure.Monitor.MultipleResourceMultipleMetricCriteria'
       allOf: [
         {
-          name: 'Failed request rate'
+          name: 'Failed request count'
+          criterionType: 'StaticThresholdCriterion'
           metricName: 'requests/failed'
           operator: 'GreaterThan'
-          threshold: errorRateThresholdPercent
+          threshold: failedRequestCountThreshold
           timeAggregation: 'Total'
           dimensions: []
         }
       ]
     }
-    actions: []
+    actions: hasIncidentRelay ? [
+      {
+        actionGroupId: actionGroup.id
+        webHookProperties: {
+          incidentType: 'failed-requests'
+        }
+      }
+    ] : []
   }
 }
 
-// Action Group for DevOps Integration
+// Action Group for incident routing
 resource actionGroup 'Microsoft.Insights/actionGroups@2023-01-01' = {
   name: actionGroupName
   location: 'global'
@@ -119,15 +133,16 @@ resource actionGroup 'Microsoft.Insights/actionGroups@2023-01-01' = {
     itsmReceivers: []
     automationRunbookReceivers: []
     voiceReceivers: []
-    logicAppReceivers: []
-    azureFunctionReceivers: []
-    armRoleReceivers: [
+    logicAppReceivers: hasIncidentRelay ? [
       {
-        name: 'Site Reliability Engineering'
-        roleId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'afd6c3d0-41ec-4235-8645-c2f016cbafbc')
+        name: 'incidentRelay'
+        resourceId: incidentRelayResourceId
+        callbackUrl: incidentRelayCallbackUrl
         useCommonAlertSchema: true
       }
-    ]
+    ] : []
+    azureFunctionReceivers: []
+    armRoleReceivers: []
   }
 }
 
@@ -203,7 +218,6 @@ resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2024-03-01'
 }
 
 // Outputs for use in other modules
-@export()
 output actionGroupId string = actionGroup.id
 output actionGroupName string = actionGroup.name
 output alertRuleHighLatencyId string = alertRuleHighLatency.id

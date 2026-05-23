@@ -628,10 +628,19 @@ This repository includes a **complete, executable 20-minute demo** showing how t
 
 1. **Setup** — Configure SRE Agent resources (5 min)
    ```bash
-   azd env set enableSreDemo true
-   azd env set azureDevOpsOrgUrl "https://dev.azure.com/<your-org>"
-   azd env set azureDevOpsProjectName "SRE-Demo"
-   azd up
+   az deployment group create \
+     --resource-group <resource-group> \
+     --template-file infra/main.bicep \
+     --parameters \
+       environmentName=<environment-name> \
+       entraTenantId=<tenant-id> \
+       entraClientId=<client-id> \
+       entraAudience=<audience> \
+       enableSreDemo=true \
+       incidentRelayResourceId=<logic-app-resource-id> \
+       incidentRelayCallbackUrl=<logic-app-callback-url> \
+       responseTimeThresholdMs=500 \
+       failedRequestCountThreshold=5
    ```
 
 2. **Run the Demo** — Complete incident cycle (20 min)
@@ -640,8 +649,8 @@ This repository includes a **complete, executable 20-minute demo** showing how t
 ### Key Features
 
 ✅ **Azure Monitor Alerts** — Auto-detect latency & error rate anomalies
-✅ **Azure DevOps Integration** — Work items created automatically
-✅ **GitHub Integration** — Issues can be created from the same Azure Monitor incident
+✅ **Azure DevOps Integration** — Work items can be created automatically through an Azure relay
+✅ **GitHub Integration** — Issues can be created from the same Azure Monitor incident through an Azure relay
 ✅ **SRE Agent Memory & Runbooks** — Knowledge base for incident response
 ✅ **Agent Reasoning** — Suggests root causes with confidence scores
 ✅ **End-to-End Demo** — Executable in 20 minutes
@@ -674,9 +683,9 @@ Agent Reasoning → Suggests root cause & resolution
 
 ### Resources Deployed (when enabled)
 
-- 3 Metric Alert Rules (latency, error rate, custom logs)
+- 2 Metric Alert Rules (latency, failed requests)
 - 1 Action Group (routes to Azure-native relay for Azure DevOps and/or GitHub)
-- 1 Log Query Alert (custom incident detection)
+- 1 Scheduled Query Alert (custom incident detection)
 - Diagnostic Settings on Container Apps Environment
 
 ---

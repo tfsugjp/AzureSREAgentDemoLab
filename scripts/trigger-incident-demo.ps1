@@ -46,7 +46,7 @@ function Write-Success {
     Write-Host "✅ $Message" -ForegroundColor Green
 }
 
-function Write-Error {
+function Write-ErrorMessage {
     param([string]$Message)
     Write-Host "❌ $Message" -ForegroundColor Red
 }
@@ -64,8 +64,8 @@ try {
     $null = Invoke-WebRequest -Uri $Endpoint -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop
     Write-Success "Endpoint reachable"
 } catch {
-    Write-Error "Cannot reach endpoint: $Endpoint"
-    Write-Error "Error: $($_.Exception.Message)"
+    Write-ErrorMessage "Cannot reach endpoint: $Endpoint"
+    Write-ErrorMessage "Error: $($_.Exception.Message)"
     exit 1
 }
 
@@ -101,8 +101,8 @@ $startTime = Get-Date
 
 # Send load
 for ($i = 1; $i -le $iterations; $i++) {
-    $elapsed = ($i * $Interval)
-    $percent = [math]::Floor(($elapsed * 100) / $Duration)
+    $elapsed = [math]::Min(($i * $Interval), $Duration)
+    $percent = [math]::Min([math]::Floor(($elapsed * 100) / $Duration), 100)
     
     Write-Host "`r📊 Progress: $($percent)% ($($elapsed)s / $($Duration)s) - Sending $Concurrent requests..." -NoNewline
     
@@ -127,5 +127,5 @@ Write-Host ""
 Write-Info "Next steps:"
 Write-Info "1. Wait 2-3 minutes for metrics to be ingested"
 Write-Info "2. Check Azure Monitor Alerts: az monitor metrics alert list"
-Write-Info "3. Check Azure DevOps for work item"
+Write-Info "3. Check Azure DevOps work items or GitHub issues"
 Write-Info "4. Run: .\verify-sre-setup.ps1 to check alert status"
