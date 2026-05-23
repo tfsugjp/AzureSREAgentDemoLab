@@ -28,6 +28,21 @@ param disableAuthentication bool = false
 @description('Optional extra tags applied to all resources.')
 param tags object = {}
 
+@description('Enable SRE Agent demo resources (alerts, action groups, Azure DevOps integration).')
+param enableSreDemo bool = false
+
+@description('Azure DevOps Organization URL for SRE Agent integration (e.g., https://dev.azure.com/myorg).')
+param azureDevOpsOrgUrl string = ''
+
+@description('Azure DevOps Project Name where SRE incidents will be tracked.')
+param azureDevOpsProjectName string = 'SRE-Demo'
+
+@description('Response time threshold in milliseconds for triggering SRE alerts.')
+param responseTimeThresholdMs int = 500
+
+@description('Error rate threshold in percentage for triggering SRE alerts.')
+param errorRateThresholdPercent int = 5
+
 var envToken = toLower(take(environmentName, 12))
 var compactEnvToken = replace(envToken, '-', '')
 var uniqueToken = toLower(take(uniqueString(subscription().subscriptionId, resourceGroup().id, environmentName, location), 6))
@@ -318,6 +333,22 @@ module notificationService './modules/container-app.bicep' = {
   dependsOn: [
     registryPullIdentityAcrPull
   ]
+}
+
+module sreResources './modules/sre-resources.bicep' = if (enableSreDemo) {
+  name: 'sre-resources'
+  params: {
+    environmentName: environmentName
+    location: location
+    logAnalyticsWorkspaceId: logAnalyticsWorkspace.id
+    applicationInsightsId: applicationInsights.id
+    containerAppsEnvironmentId: containerAppsEnvironment.id
+    azureDevOpsOrgUrl: azureDevOpsOrgUrl
+    azureDevOpsProjectName: azureDevOpsProjectName
+    responseTimeThresholdMs: responseTimeThresholdMs
+    errorRateThresholdPercent: errorRateThresholdPercent
+    tags: commonTags
+  }
 }
 
 output ACR_NAME string = containerRegistry.name

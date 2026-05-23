@@ -620,6 +620,62 @@ curl -s -o /dev/null -w "%{http_code}" \
 - 期待される挙動: HTTP 500 が返る
 - Application Insights / OpenTelemetry にスタックトレース付きの例外ログが記録される
 
+## Azure SRE Agent Demo Integration
+
+This repository includes a **complete, executable 20-minute demo** showing how the Azure SRE Agent detects incidents, integrates with Azure DevOps for work item tracking, and uses memory & reasoning to suggest resolutions.
+
+### Quick Start
+
+1. **Setup** — Configure SRE Agent resources (5 min)
+   ```bash
+   azd env set enableSreDemo true
+   azd env set azureDevOpsOrgUrl "https://dev.azure.com/<your-org>"
+   azd env set azureDevOpsProjectName "SRE-Demo"
+   azd up
+   ```
+
+2. **Run the Demo** — Complete incident cycle (20 min)
+   - See: [SRE Scenario - 20 Minute Demo](./docs/sre-scenario-20min.md)
+
+### Key Features
+
+✅ **Azure Monitor Alerts** — Auto-detect latency & error rate anomalies
+✅ **Azure DevOps Integration** — Work items created automatically
+✅ **SRE Agent Memory & Runbooks** — Knowledge base for incident response
+✅ **Agent Reasoning** — Suggests root causes with confidence scores
+✅ **End-to-End Demo** — Executable in 20 minutes
+
+### Documentation
+
+- **[SRE Agent Setup Guide](./docs/sre-agent-setup.md)** — Complete setup instructions + prerequisites
+- **[20-Minute Scenario](./docs/sre-scenario-20min.md)** — Executable demo with expected outputs
+- **[Azure SRE Agent Official Docs](https://sre.azure.com)** — Full reference
+
+### Architecture
+
+```
+Microservices → OpenTelemetry → Application Insights
+    ↓
+Log Analytics (30-day retention)
+    ↓
+Alert Rules (latency, error rate)
+    ↓
+Action Group → Azure DevOps Work Item
+    ↓
+SRE Agent (reads incident + memory + telemetry)
+    ↓
+Agent Reasoning → Suggests root cause & resolution
+```
+
+### Resources Deployed (when enabled)
+
+- 3 Metric Alert Rules (latency, error rate, custom logs)
+- 1 Action Group (routes to Azure DevOps)
+- 1 Log Query Alert (custom incident detection)
+- Diagnostic Settings on Container Apps Environment
+
+---
+
 ## ⚠️ 意図的なバグ (SRE トレーニング用)
 
 このアプリケーションには **教材目的** で1か所だけ意図的なパフォーマンス問題が埋め込まれています。
