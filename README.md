@@ -620,6 +620,76 @@ curl -s -o /dev/null -w "%{http_code}" \
 - 期待される挙動: HTTP 500 が返る
 - Application Insights / OpenTelemetry にスタックトレース付きの例外ログが記録される
 
+## Azure SRE Agent Demo Integration
+
+This repository includes a **complete, executable 20-minute demo** showing how the Azure SRE Agent detects incidents, routes them to Azure DevOps, GitHub, or both, and uses memory & reasoning to suggest resolutions.
+
+### Quick Start
+
+1. **Setup** — Configure SRE Agent resources (5 min)
+   ```bash
+   az deployment group create \
+     --resource-group <resource-group> \
+     --template-file infra/main.bicep \
+     --parameters \
+       environmentName=<environment-name> \
+       entraTenantId=<tenant-id> \
+       entraClientId=<client-id> \
+       entraAudience=<audience> \
+       enableSreDemo=true \
+       incidentRelayResourceId=<logic-app-resource-id> \
+       incidentRelayCallbackUrl=<logic-app-callback-url> \
+       responseTimeThresholdMs=500 \
+       failedRequestCountThreshold=5
+   ```
+
+2. **Run the Demo** — Complete incident cycle (20 min)
+   - See: [SRE Scenario - 20 Minute Demo](./docs/sre-scenario-20min.md)
+
+### Key Features
+
+✅ **Azure Monitor Alerts** — Auto-detect latency & error rate anomalies
+✅ **Azure DevOps Integration** — Work items can be created automatically through an Azure relay
+✅ **GitHub Integration** — Issues can be created from the same Azure Monitor incident through an Azure relay
+✅ **SRE Agent Memory & Runbooks** — Knowledge base for incident response
+✅ **Agent Reasoning** — Suggests root causes with confidence scores
+✅ **End-to-End Demo** — Executable in 20 minutes
+
+### Documentation
+
+- **[SRE Agent Setup Guide](./docs/sre-agent-setup.md)** — Complete setup instructions + prerequisites
+- **[SRE Agent Setup Guide (Japanese)](./docs/sre-agent-setup_ja.md)** — 日本語版セットアップガイド
+- **[20-Minute Scenario](./docs/sre-scenario-20min.md)** — Executable demo with expected outputs
+- **[20-Minute Scenario (Japanese)](./docs/sre-scenario-20min_ja.md)** — 日本語版デモシナリオ
+- **[Azure SRE Agent Official Docs](https://sre.azure.com)** — Full reference
+
+### Architecture
+
+```
+Microservices → OpenTelemetry → Application Insights
+    ↓
+Log Analytics (30-day retention)
+    ↓
+Alert Rules (latency, error rate)
+    ↓
+Action Group → Logic App / Azure Function
+    ↓
+Azure DevOps Work Item and/or GitHub Issue
+    ↓
+SRE Agent (reads incident + memory + telemetry)
+    ↓
+Agent Reasoning → Suggests root cause & resolution
+```
+
+### Resources Deployed (when enabled)
+
+- 2 Metric Alert Rules (latency, failed requests)
+- 1 Action Group (routes to Azure-native relay for Azure DevOps and/or GitHub)
+- 1 Scheduled Query Alert (custom incident detection)
+- Diagnostic Settings on Container Apps Environment
+
+---
+
 ## ⚠️ 意図的なバグ (SRE トレーニング用)
 
 このアプリケーションには **教材目的** で1か所だけ意図的なパフォーマンス問題が埋め込まれています。
