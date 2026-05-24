@@ -428,7 +428,7 @@ Bicep デプロイで出力された AKS クラスター名を使用して、kub
 Bash の場合:
 ```bash
 # AKS クラスター名を取得
-AKS_NAME=$(az deployment group show -g rg-global-azure-demo -n main-aks --query properties.outputs.AKS_CLUSTER_NAME.value -o tsv)
+AKS_NAME=$(az deployment group show -g rg-global-azure-demo -n main-aks --query properties.outputs.akS_CLUSTER_NAME.value -o tsv)
 
 # AKS クラスターのクレデンシャルを取得
 az aks get-credentials --resource-group rg-global-azure-demo --name $AKS_NAME --overwrite-existing
@@ -444,7 +444,7 @@ kubectl apply -f k8s/namespace.yaml
 PowerShell の場合:
 ```powershell
 # AKS クラスター名を取得
-$AKS_NAME = (az deployment group show -g rg-global-azure-demo -n main-aks --query "properties.outputs.AKS_CLUSTER_NAME.value" -o tsv)
+$AKS_NAME = (az deployment group show -g rg-global-azure-demo -n main-aks --query "properties.outputs.akS_CLUSTER_NAME.value" -o tsv)
 
 # AKS クラスターのクレデンシャルを取得
 az aks get-credentials --resource-group rg-global-azure-demo --name $AKS_NAME --overwrite-existing
@@ -473,7 +473,7 @@ kubectl create secret generic entra-id-secret \
 kubectl create secret generic cosmos-db-secret \
   --namespace global-azure-demo \
   --from-literal=ConnectionString="$(az cosmosdb keys list \
-    --name $(az deployment group show -g rg-global-azure-demo -n main-aks --query properties.outputs.COSMOS_ACCOUNT_NAME.value -o tsv) \
+    --name $(az deployment group show -g rg-global-azure-demo -n main-aks --query properties.outputs.cosmoS_ACCOUNT_NAME.value -o tsv) \
     --resource-group rg-global-azure-demo \
     --type connection-strings \
     --query connectionStrings[0].connectionString -o tsv)" \
@@ -488,7 +488,7 @@ PowerShell の場合:
 # $TENANT_ID = (az account show --query tenantId -o tsv)
 
 # Cosmos DB の接続文字列を取得
-$COSMOS_ACCOUNT_NAME = (az deployment group show -g rg-global-azure-demo -n main-aks --query "properties.outputs.COSMOS_ACCOUNT_NAME.value" -o tsv)
+$COSMOS_ACCOUNT_NAME = (az deployment group show -g rg-global-azure-demo -n main-aks --query "properties.outputs.cosmoS_ACCOUNT_NAME.value" -o tsv)
 $CONNECTION_STRING = (az cosmosdb keys list `
   --name $COSMOS_ACCOUNT_NAME `
   --resource-group rg-global-azure-demo `
@@ -533,8 +533,8 @@ docker push acrglobalazuredemo.azurecr.io/notification-service:latest
 
 ```bash
 # AKS クレデンシャルを取得
-AKS_NAME=$(az deployment group show -g rg-global-azure-demo -n main-aks --query properties.outputs.AKS_CLUSTER_NAME.value -o tsv)
-ALB_CLIENT_ID=$(az deployment group show -g rg-global-azure-demo -n main-aks --query properties.outputs.ALB_IDENTITY_CLIENT_ID.value -o tsv)
+AKS_NAME=$(az deployment group show -g rg-global-azure-demo -n main-aks --query properties.outputs.akS_CLUSTER_NAME.value -o tsv)
+ALB_CLIENT_ID=$(az deployment group show -g rg-global-azure-demo -n main-aks --query properties.outputs.alB_IDENTITY_CLIENT_ID.value -o tsv)
 
 az aks get-credentials --resource-group rg-global-azure-demo --name $AKS_NAME
 
@@ -572,11 +572,11 @@ kubectl apply -f k8s/notification-service.yaml
 ```bash
 # AGC リソース ID を取得
 AGC_ID=$(az deployment group show -g rg-global-azure-demo -n main-aks \
-  --query properties.outputs.AGC_RESOURCE_ID.value -o tsv)
+  --query properties.outputs.agC_RESOURCE_ID.value -o tsv)
 
 # AGC フロントエンド名を取得
 AGC_FRONTEND_NAME=$(az deployment group show -g rg-global-azure-demo -n main-aks \
-  --query properties.outputs.AGC_FRONTEND_NAME.value -o tsv)
+  --query properties.outputs.agC_FRONTEND_NAME.value -o tsv)
 
 # gateway.yaml のプレースホルダーを置換して適用
 sed -e "s|<AGC_RESOURCE_ID>|${AGC_ID}|g" \
@@ -598,7 +598,7 @@ kubectl get httproute -n global-azure-demo
 
 # AGC フロントエンド FQDN を取得
 AGC_FQDN=$(az deployment group show -g rg-global-azure-demo -n main-aks \
-  --query properties.outputs.AGC_FRONTEND_FQDN.value -o tsv)
+  --query properties.outputs.agC_FRONTEND_FQDN.value -o tsv)
 echo "Endpoint: http://${AGC_FQDN}"
 ```
 
@@ -616,7 +616,7 @@ Bash の場合:
 kubectl config current-context
 
 # 2. AKS に接続していない場合、クレデンシャルを取得
-AKS_NAME=$(az deployment group show -g rg-global-azure-demo -n main-aks --query properties.outputs.AKS_CLUSTER_NAME.value -o tsv)
+AKS_NAME=$(az deployment group show -g rg-global-azure-demo -n main-aks --query properties.outputs.akS_CLUSTER_NAME.value -o tsv)
 az aks get-credentials --resource-group rg-global-azure-demo --name $AKS_NAME --overwrite-existing
 
 # 3. 接続確認
@@ -630,7 +630,7 @@ PowerShell の場合:
 kubectl config current-context
 
 # 2. AKS に接続していない場合、クレデンシャルを取得
-$AKS_NAME = (az deployment group show -g rg-global-azure-demo -n main-aks --query "properties.outputs.AKS_CLUSTER_NAME.value" -o tsv)
+$AKS_NAME = (az deployment group show -g rg-global-azure-demo -n main-aks --query "properties.outputs.akS_CLUSTER_NAME.value" -o tsv)
 az aks get-credentials --resource-group rg-global-azure-demo --name $AKS_NAME --overwrite-existing
 
 # 3. 接続確認
@@ -650,7 +650,7 @@ Bash の場合:
 az deployment group show \
   -g rg-global-azure-demo \
   -n main-aks \
-  --query "properties.outputs.COSMOS_ACCOUNT_NAME.value" -o tsv
+  --query "properties.outputs.cosmoS_ACCOUNT_NAME.value" -o tsv
 
 # リソースグループを確認
 az group list --query "[].name" -o table
@@ -662,7 +662,7 @@ PowerShell の場合:
 az deployment group show `
   -g rg-global-azure-demo `
   -n main-aks `
-  --query "properties.outputs.COSMOS_ACCOUNT_NAME.value" -o tsv
+  --query "properties.outputs.cosmoS_ACCOUNT_NAME.value" -o tsv
 
 # リソースグループを確認
 az group list --query "[].name" -o table
@@ -694,7 +694,7 @@ AGC_FQDN=$(kubectl get gateway global-azure-demo-gateway \
   -o jsonpath='{.status.addresses[0].value}')
 if [ -z "$AGC_FQDN" ]; then
   AGC_FQDN=$(az deployment group show -g rg-global-azure-demo -n main-aks \
-    --query properties.outputs.AGC_FRONTEND_FQDN.value -o tsv)
+    --query properties.outputs.agC_FRONTEND_FQDN.value -o tsv)
 fi
 
 echo "AGC endpoint: ${AGC_FQDN}"
