@@ -75,6 +75,7 @@ COMMON_ARGS=(
   "--set" "global.cloudIdentifiers.Azure.resourceGroupName=${RESOURCE_GROUP}"
   "--set" "global.cloudIdentifiers.Azure.clusterName=${CLUSTER_NAME}"
   "--set" "global.cloudIdentifiers.Azure.region=${LOCATION}"
+  "--set" "defender-admission-controller.enableMisconfigurationPolicies=true"
 )
 
 if [ "$UPGRADE" = true ]; then
