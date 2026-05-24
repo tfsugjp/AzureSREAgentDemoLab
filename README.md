@@ -715,13 +715,30 @@ PowerShell 7 の場合:
 ```
 
 上記スクリプトを使わずに適用する場合は、以下の手順でもデプロイできます。
+**ただし、`<ACR_NAME>` を実際の ACR ログインサーバー名に置き換える必要があります。**
 
-Bash / PowerShell の場合 (どちらも同じコマンド):
+Bash の場合:
 ```bash
-kubectl apply -f k8s/namespace.yaml
-kubectl apply -f k8s/catalog-service.yaml
-kubectl apply -f k8s/order-service.yaml
-kubectl apply -f k8s/notification-service.yaml
+# ACR_NAME を設定
+ACR_NAME="your-acr-name.azurecr.io"
+
+# manifest を置換して適用
+sed "s|<ACR_NAME>|${ACR_NAME}|g" k8s/namespace.yaml | kubectl apply -f -
+sed "s|<ACR_NAME>|${ACR_NAME}|g" k8s/catalog-service.yaml | kubectl apply -f -
+sed "s|<ACR_NAME>|${ACR_NAME}|g" k8s/order-service.yaml | kubectl apply -f -
+sed "s|<ACR_NAME>|${ACR_NAME}|g" k8s/notification-service.yaml | kubectl apply -f -
+```
+
+PowerShell 7 の場合:
+```powershell
+# ACR_NAME を設定
+$ACR_NAME = "your-acr-name.azurecr.io"
+
+# manifest を置換して適用
+(Get-Content k8s/namespace.yaml) -replace '<ACR_NAME>', $ACR_NAME | kubectl apply -f -
+(Get-Content k8s/catalog-service.yaml) -replace '<ACR_NAME>', $ACR_NAME | kubectl apply -f -
+(Get-Content k8s/order-service.yaml) -replace '<ACR_NAME>', $ACR_NAME | kubectl apply -f -
+(Get-Content k8s/notification-service.yaml) -replace '<ACR_NAME>', $ACR_NAME | kubectl apply -f -
 ```
 
 ### 6. Gateway API リソースのデプロイ
