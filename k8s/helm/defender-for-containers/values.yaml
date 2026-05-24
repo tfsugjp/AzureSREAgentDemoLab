@@ -1,0 +1,19 @@
+# Helm values for Microsoft Defender for Containers sensor
+# OCI: oci://mcr.microsoft.com/azuredefender-preview/microsoft-defender-for-containers
+#
+# Usage:
+#   helm install defender-k8s \
+#     oci://mcr.microsoft.com/azuredefender-preview/microsoft-defender-for-containers \
+#     --version 0.11.2 \
+#     --create-namespace --namespace mdc \
+#     -f k8s/helm/defender-for-containers/values.yaml
+#
+# Replace placeholder values before deploying, or override via --set.
+
+global:
+  cloudIdentifiers:
+    Azure:
+      subscriptionId: "<SUBSCRIPTION_ID>"
+      resourceGroupName: "<RESOURCE_GROUP>"
+      clusterName: "<CLUSTER_NAME>"
+      region: "<LOCATION>"
