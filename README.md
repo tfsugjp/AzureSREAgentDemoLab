@@ -701,12 +701,15 @@ kubectl apply -f k8s/notification-service.yaml
 
 Bash の場合:
 ```bash
+# Bicep デプロイ名 (固定値にしない)
+DEPLOYMENT_NAME="<YOUR_BICEP_DEPLOYMENT_NAME>"
+
 # AGC リソース ID を取得
-AGC_ID=$(az deployment group show -g rg-global-azure-demo -n main-aks \
+AGC_ID=$(az deployment group show -g rg-global-azure-demo -n "$DEPLOYMENT_NAME" \
   --query properties.outputs.agC_RESOURCE_ID.value -o tsv)
 
 # AGC フロントエンド名を取得
-AGC_FRONTEND_NAME=$(az deployment group show -g rg-global-azure-demo -n main-aks \
+AGC_FRONTEND_NAME=$(az deployment group show -g rg-global-azure-demo -n "$DEPLOYMENT_NAME" \
   --query properties.outputs.agC_FRONTEND_NAME.value -o tsv)
 
 # gateway.yaml のプレースホルダーを置換して適用
@@ -720,11 +723,14 @@ kubectl apply -f k8s/httproutes.yaml
 
 PowerShell の場合:
 ```powershell
+# Bicep デプロイ名 (固定値にしない)
+$DEPLOYMENT_NAME = "<YOUR_BICEP_DEPLOYMENT_NAME>"
+
 # AGC リソース ID を取得
-$AGC_ID = (az deployment group show -g rg-global-azure-demo -n main-aks --query "properties.outputs.AGC_RESOURCE_ID.value" -o tsv)
+$AGC_ID = (az deployment group show -g rg-global-azure-demo -n $DEPLOYMENT_NAME --query "properties.outputs.agC_RESOURCE_ID.value" -o tsv)
 
 # AGC フロントエンド名を取得
-$AGC_FRONTEND_NAME = (az deployment group show -g rg-global-azure-demo -n main-aks --query "properties.outputs.AGC_FRONTEND_NAME.value" -o tsv)
+$AGC_FRONTEND_NAME = (az deployment group show -g rg-global-azure-demo -n $DEPLOYMENT_NAME --query "properties.outputs.agC_FRONTEND_NAME.value" -o tsv)
 
 # gateway.yaml のプレースホルダーを置換して適用
 (Get-Content k8s/gateway.yaml) `
@@ -740,6 +746,9 @@ kubectl apply -f k8s/httproutes.yaml
 
 Bash の場合:
 ```bash
+# Bicep デプロイ名 (固定値にしない)
+DEPLOYMENT_NAME="<YOUR_BICEP_DEPLOYMENT_NAME>"
+
 # Gateway のステータスを確認
 kubectl get gateway -n global-azure-demo
 
@@ -747,13 +756,16 @@ kubectl get gateway -n global-azure-demo
 kubectl get httproute -n global-azure-demo
 
 # AGC フロントエンド FQDN を取得
-AGC_FQDN=$(az deployment group show -g rg-global-azure-demo -n main-aks \
+AGC_FQDN=$(az deployment group show -g rg-global-azure-demo -n "$DEPLOYMENT_NAME" \
   --query properties.outputs.agC_FRONTEND_FQDN.value -o tsv)
 echo "Endpoint: http://${AGC_FQDN}"
 ```
 
 PowerShell の場合:
 ```powershell
+# Bicep デプロイ名 (固定値にしない)
+$DEPLOYMENT_NAME = "<YOUR_BICEP_DEPLOYMENT_NAME>"
+
 # Gateway のステータスを確認
 kubectl get gateway -n global-azure-demo
 
@@ -761,7 +773,7 @@ kubectl get gateway -n global-azure-demo
 kubectl get httproute -n global-azure-demo
 
 # AGC フロントエンド FQDN を取得
-$AGC_FQDN = (az deployment group show -g rg-global-azure-demo -n main-aks --query "properties.outputs.AGC_FRONTEND_FQDN.value" -o tsv)
+$AGC_FQDN = (az deployment group show -g rg-global-azure-demo -n $DEPLOYMENT_NAME --query "properties.outputs.agC_FRONTEND_FQDN.value" -o tsv)
 Write-Host "Endpoint: http://$AGC_FQDN"
 ```
 
@@ -872,10 +884,11 @@ PowerShell の場合:
 $TENANT_ID = "<YOUR_TENANT_ID>"   # az account show --query tenantId -o tsv
 $CLIENT_ID = "<YOUR_CLIENT_ID>"   # アプリ登録の Application (client) ID
 $CLIENT_SECRET = "<YOUR_CLIENT_SECRET>"
+$DEPLOYMENT_NAME = "<YOUR_BICEP_DEPLOYMENT_NAME>"
 # AGC フロントエンド FQDN を取得
 $AGC_FQDN = (kubectl get gateway global-azure-demo-gateway -n global-azure-demo -o jsonpath='{.status.addresses[0].value}' 2>$null)
 if (-not $AGC_FQDN) {
-  $AGC_FQDN = (az deployment group show -g rg-global-azure-demo -n main-aks --query "properties.outputs.AGC_FRONTEND_FQDN.value" -o tsv)
+  $AGC_FQDN = (az deployment group show -g rg-global-azure-demo -n $DEPLOYMENT_NAME --query "properties.outputs.agC_FRONTEND_FQDN.value" -o tsv)
 }
 
 Write-Host "AGC endpoint: $AGC_FQDN"
