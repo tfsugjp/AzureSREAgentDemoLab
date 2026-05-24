@@ -410,6 +410,43 @@ az rest --method POST \
 
 アプリ登録の情報を Kubernetes シークレットに反映します。
 
+> ⚠️ **前提条件**: このステップを実行する前に、必ず AKS クラスターに接続してください。以下を確認してください。
+
+**ステップ 2-5-1: AKS クラスターへの接続確認**
+
+Bicep デプロイで出力された AKS クラスター名を使用して、kubectl コンテキストを設定します。
+
+Bash の場合:
+```bash
+# AKS クラスター名を取得
+AKS_NAME=$(az deployment group show -g rg-global-azure-demo -n main-aks --query properties.outputs.AKS_CLUSTER_NAME.value -o tsv)
+
+# AKS クラスターのクレデンシャルを取得
+az aks get-credentials --resource-group rg-global-azure-demo --name $AKS_NAME --overwrite-existing
+
+# 接続確認
+kubectl cluster-info
+kubectl config current-context
+```
+
+PowerShell の場合:
+```powershell
+# AKS クラスター名を取得
+$AKS_NAME = (az deployment group show -g rg-global-azure-demo -n main-aks --query "properties.outputs.AKS_CLUSTER_NAME.value" -o tsv)
+
+# AKS クラスターのクレデンシャルを取得
+az aks get-credentials --resource-group rg-global-azure-demo --name $AKS_NAME --overwrite-existing
+
+# 接続確認
+kubectl cluster-info
+kubectl config current-context
+```
+
+接続が成功したら、以下のメッセージが表示されます。失敗した場合は、リソースグループ名、クラスター名、サブスクリプションを確認してください。
+
+**ステップ 2-5-2: Kubernetes シークレットの作成**
+
+Bash の場合:
 ```bash
 kubectl create secret generic entra-id-secret \
   --namespace global-azure-demo \
@@ -425,6 +462,31 @@ kubectl create secret generic cosmos-db-secret \
     --resource-group rg-global-azure-demo \
     --type connection-strings \
     --query connectionStrings[0].connectionString -o tsv)" \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+
+PowerShell の場合:
+```powershell
+# Cosmos DB の接続文字列を取得
+$COSMOS_ACCOUNT_NAME = (az deployment group show -g rg-global-azure-demo -n main-aks --query "properties.outputs.COSMOS_ACCOUNT_NAME.value" -o tsv)
+$CONNECTION_STRING = (az cosmosdb keys list `
+  --name $COSMOS_ACCOUNT_NAME `
+  --resource-group rg-global-azure-demo `
+  --type connection-strings `
+  --query "connectionStrings[0].connectionString" -o tsv)
+
+# entra-id-secret を作成
+kubectl create secret generic entra-id-secret `
+  --namespace global-azure-demo `
+  --from-literal="TenantId=$TENANT_ID" `
+  --from-literal="ClientId=$APP_ID" `
+  --from-literal="Audience=api://$APP_ID" `
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# cosmos-db-secret を作成
+kubectl create secret generic cosmos-db-secret `
+  --namespace global-azure-demo `
+  --from-literal="ConnectionString=$CONNECTION_STRING" `
   --dry-run=client -o yaml | kubectl apply -f -
 ```
 
@@ -518,6 +580,81 @@ kubectl get httproute -n global-azure-demo
 AGC_FQDN=$(az deployment group show -g rg-global-azure-demo -n main-aks \
   --query properties.outputs.AGC_FRONTEND_FQDN.value -o tsv)
 echo "Endpoint: http://${AGC_FQDN}"
+```
+
+### 8. トラブルシューティング
+
+#### 問題: `kubectl apply` でエラー "dial tcp 127.0.0.1:8080: connectex: No connection could be made"
+
+**原因**: kubectl が AKS クラスターに接続していません。
+
+**解決方法**:
+
+Bash の場合:
+```bash
+# 1. 接続しているクラスターを確認
+kubectl config current-context
+
+# 2. AKS に接続していない場合、クレデンシャルを取得
+AKS_NAME=$(az deployment group show -g rg-global-azure-demo -n main-aks --query properties.outputs.AKS_CLUSTER_NAME.value -o tsv)
+az aks get-credentials --resource-group rg-global-azure-demo --name $AKS_NAME --overwrite-existing
+
+# 3. 接続確認
+kubectl cluster-info
+kubectl get nodes
+```
+
+PowerShell の場合:
+```powershell
+# 1. 接続しているクラスターを確認
+kubectl config current-context
+
+# 2. AKS に接続していない場合、クレデンシャルを取得
+$AKS_NAME = (az deployment group show -g rg-global-azure-demo -n main-aks --query "properties.outputs.AKS_CLUSTER_NAME.value" -o tsv)
+az aks get-credentials --resource-group rg-global-azure-demo --name $AKS_NAME --overwrite-existing
+
+# 3. 接続確認
+kubectl cluster-info
+kubectl get nodes
+```
+
+#### 問題: Cosmos DB の接続文字列が取得できない
+
+**原因**: リソースグループ名またはリソース名が正しくない可能性があります。
+
+**解決方法**:
+
+Bash の場合:
+```bash
+# Bicep デプロイの出力から Cosmos DB アカウント名を確認
+az deployment group show \
+  -g rg-global-azure-demo \
+  -n main-aks \
+  --query "properties.outputs.COSMOS_ACCOUNT_NAME.value" -o tsv
+
+# リソースグループを確認
+az group list --query "[].name" -o table
+```
+
+PowerShell の場合:
+```powershell
+# Bicep デプロイの出力から Cosmos DB アカウント名を確認
+az deployment group show `
+  -g rg-global-azure-demo `
+  -n main-aks `
+  --query "properties.outputs.COSMOS_ACCOUNT_NAME.value" -o tsv
+
+# リソースグループを確認
+az group list --query "[].name" -o table
+```
+
+#### 問題: Namespace `global-azure-demo` が存在しない
+
+**解決方法**:
+
+```bash
+# namespace を作成
+kubectl create namespace global-azure-demo
 ```
 
 ## Entra ID 認証フロー (AKS 環境)
