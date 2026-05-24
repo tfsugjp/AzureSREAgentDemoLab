@@ -488,7 +488,20 @@ az rest --method POST `
 
 アプリ登録の情報を Kubernetes シークレットに反映します。
 
-> ⚠️ **前提条件**: このステップを実行する前に、必ず AKS クラスターに接続してください。以下を確認してください。
+> ⚠️ **前提条件**: このステップを実行する前に、以下をインストール・確認してください。
+
+**前提: kubectl と helm のインストール**
+
+AKS クラスターの管理に必須なツールをインストールしてください。
+
+- **kubectl**: [公式インストールガイド](https://kubernetes.io/docs/tasks/tools/)
+  - Linux: [Linux への kubectl のインストール](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
+  - macOS: [macOS への kubectl のインストール](https://kubernetes.io/docs/tasks/tools/install-kubectl-macos/)
+  - Windows: [Windows への kubectl のインストール](https://kubernetes.io/docs/tasks/tools/install-kubectl-windows/)
+
+- **helm**: [公式インストールガイド](https://helm.sh/docs/intro/install/)
+  - Linux/macOS: `curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash`
+  - Windows: [Windows へのインストール](https://helm.sh/docs/intro/install/#from-scoop-windows)
 
 **ステップ 2-5-1: AKS クラスターへの接続確認**
 
@@ -689,6 +702,19 @@ kubectl get gatewayclass azure-alb-external -o yaml
 
 > **注**: Secret は手順 2-5 の `kubectl create secret` コマンドで登録済みです。
 > `k8s/secrets.yaml` はテンプレートとして提供されていますが、Secret を登録済みの場合は apply しないでください (実際の値がプレースホルダーで上書きされます)。
+> `k8s/*-service.yaml` の image は `<ACR_NAME>` プレースホルダーを含むため、リポジトリ上の YAML は編集せず、一時ファイルへ置換してデプロイしてください。
+
+Bash の場合:
+```bash
+./scripts/deploy-workloads-with-acr.sh gadosakamtt4okjashp7q global-azure-demo
+```
+
+PowerShell 7 の場合:
+```powershell
+./scripts/deploy-workloads-with-acr.ps1 -AcrName gadosakamtt4okjashp7q -Namespace global-azure-demo
+```
+
+上記スクリプトを使わずに適用する場合は、以下の手順でもデプロイできます。
 
 Bash / PowerShell の場合 (どちらも同じコマンド):
 ```bash
