@@ -338,6 +338,15 @@ echo "TenantId : $TENANT_ID"
 echo "ClientId : $APP_ID"
 ```
 
+```powershell
+# アプリ登録を作成し、アプリケーション ID を取得
+$APP_ID = (az ad app create --display-name "GlobalAzureDemo2026-API" --query appId -o tsv)
+$TENANT_ID = (az account show --query tenantId -o tsv)
+
+Write-Host "TenantId : $TENANT_ID"
+Write-Host "ClientId : $APP_ID"
+```
+
 #### 2-2. App ID URI とスコープの設定
 
 API として保護するために App ID URI を設定します。
@@ -427,6 +436,9 @@ az aks get-credentials --resource-group rg-global-azure-demo --name $AKS_NAME --
 # 接続確認
 kubectl cluster-info
 kubectl config current-context
+
+# Secret 登録先の namespace を先に作成
+kubectl apply -f k8s/namespace.yaml
 ```
 
 PowerShell の場合:
@@ -440,6 +452,9 @@ az aks get-credentials --resource-group rg-global-azure-demo --name $AKS_NAME --
 # 接続確認
 kubectl cluster-info
 kubectl config current-context
+
+# Secret 登録先の namespace を先に作成
+kubectl apply -f k8s/namespace.yaml
 ```
 
 接続が成功したら、以下のメッセージが表示されます。失敗した場合は、リソースグループ名、クラスター名、サブスクリプションを確認してください。
@@ -467,6 +482,11 @@ kubectl create secret generic cosmos-db-secret \
 
 PowerShell の場合:
 ```powershell
+# 2-1 の PowerShell 手順で取得した値を利用
+# 別セッションで実行する場合は事前に設定してください
+# $APP_ID = "<YOUR_CLIENT_ID>"
+# $TENANT_ID = (az account show --query tenantId -o tsv)
+
 # Cosmos DB の接続文字列を取得
 $COSMOS_ACCOUNT_NAME = (az deployment group show -g rg-global-azure-demo -n main-aks --query "properties.outputs.COSMOS_ACCOUNT_NAME.value" -o tsv)
 $CONNECTION_STRING = (az cosmosdb keys list `
