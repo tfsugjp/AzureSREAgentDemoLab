@@ -38,6 +38,10 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --version)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "Error: --version requires a value." >&2
+        exit 1
+      fi
       VERSION="$2"
       shift 2
       ;;
@@ -49,7 +53,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 OCI_REGISTRY="oci://mcr.microsoft.com/azuredefender-preview/microsoft-defender-for-containers"
-CHART_REF="${OCI_REGISTRY}:${VERSION}"
+CHART_REF="${OCI_REGISTRY}"
 RELEASE_NAME="defender-k8s"
 NAMESPACE="mdc"
 
@@ -60,8 +64,13 @@ echo "Version   : ${VERSION}"
 echo "Mode      : $([ "$UPGRADE" = true ] && echo 'upgrade' || echo 'install')"
 echo ""
 
+echo "Configuring Azure subscription and AKS credentials..."
+az account set --subscription "${SUBSCRIPTION_ID}"
+az aks get-credentials --resource-group "${RESOURCE_GROUP}" --name "${CLUSTER_NAME}" --overwrite-existing
+
 COMMON_ARGS=(
   "--namespace" "${NAMESPACE}"
+  "--version" "${VERSION}"
   "--set" "global.cloudIdentifiers.Azure.subscriptionId=${SUBSCRIPTION_ID}"
   "--set" "global.cloudIdentifiers.Azure.resourceGroupName=${RESOURCE_GROUP}"
   "--set" "global.cloudIdentifiers.Azure.clusterName=${CLUSTER_NAME}"
@@ -69,7 +78,7 @@ COMMON_ARGS=(
 )
 
 if [ "$UPGRADE" = true ]; then
-  helm upgrade "${RELEASE_NAME}" "${CHART_REF}" "${COMMON_ARGS[@]}" --reuse-values
+  helm upgrade "${RELEASE_NAME}" "${CHART_REF}" "${COMMON_ARGS[@]}" --reuse-values --server-side=true --force-conflicts
 else
   helm install "${RELEASE_NAME}" "${CHART_REF}" --create-namespace "${COMMON_ARGS[@]}"
 fi

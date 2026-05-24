@@ -54,8 +54,19 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+function Assert-LastExitCode {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$CommandName
+    )
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "$CommandName failed with exit code $LASTEXITCODE."
+    }
+}
+
 $OciRegistry = "oci://mcr.microsoft.com/azuredefender-preview/microsoft-defender-for-containers"
-$ChartRef    = "${OciRegistry}:${Version}"
+$ChartRef    = $OciRegistry
 $ReleaseName = "defender-k8s"
 $Namespace   = "mdc"
 
@@ -66,8 +77,15 @@ Write-Host "Version   : $Version"
 Write-Host "Mode      : $(if ($Upgrade) { 'upgrade' } else { 'install' })"
 Write-Host ""
 
+Write-Host "Configuring Azure subscription and AKS credentials..." -ForegroundColor Cyan
+az account set --subscription $SubscriptionId
+Assert-LastExitCode -CommandName "az account set"
+az aks get-credentials --resource-group $ResourceGroup --name $ClusterName --overwrite-existing
+Assert-LastExitCode -CommandName "az aks get-credentials"
+
 $CommonArgs = @(
     "--namespace", $Namespace,
+    "--version", $Version,
     "--set", "global.cloudIdentifiers.Azure.subscriptionId=$SubscriptionId",
     "--set", "global.cloudIdentifiers.Azure.resourceGroupName=$ResourceGroup",
     "--set", "global.cloudIdentifiers.Azure.clusterName=$ClusterName",
@@ -75,12 +93,15 @@ $CommonArgs = @(
 )
 
 if ($Upgrade) {
-    helm upgrade $ReleaseName $ChartRef @CommonArgs --reuse-values
+    helm upgrade $ReleaseName $ChartRef @CommonArgs --reuse-values --server-side=true --force-conflicts
 } else {
     helm install $ReleaseName $ChartRef --create-namespace @CommonArgs
 }
+Assert-LastExitCode -CommandName "helm"
 
 Write-Host ""
 Write-Host "Verifying deployment..." -ForegroundColor Cyan
 helm list --namespace $Namespace
+Assert-LastExitCode -CommandName "helm list"
 kubectl get pods --namespace $Namespace
+Assert-LastExitCode -CommandName "kubectl get pods"
