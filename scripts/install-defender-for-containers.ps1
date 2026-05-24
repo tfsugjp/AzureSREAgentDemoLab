@@ -89,7 +89,8 @@ $CommonArgs = @(
     "--set", "global.cloudIdentifiers.Azure.subscriptionId=$SubscriptionId",
     "--set", "global.cloudIdentifiers.Azure.resourceGroupName=$ResourceGroup",
     "--set", "global.cloudIdentifiers.Azure.clusterName=$ClusterName",
-    "--set", "global.cloudIdentifiers.Azure.region=$Location"
+    "--set", "global.cloudIdentifiers.Azure.region=$Location",
+    "--set", "defender-admission-controller.enableMisconfigurationPolicies=true"
 )
 
 if ($Upgrade) {
