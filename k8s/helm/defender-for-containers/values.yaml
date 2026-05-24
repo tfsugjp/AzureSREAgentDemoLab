@@ -17,3 +17,6 @@ global:
       resourceGroupName: "<RESOURCE_GROUP>"
       clusterName: "<CLUSTER_NAME>"
       region: "<LOCATION>"
+
+defender-admission-controller:
+  enableMisconfigurationPolicies: true
