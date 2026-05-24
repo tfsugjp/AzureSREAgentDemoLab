@@ -706,12 +706,12 @@ kubectl get gatewayclass azure-alb-external -o yaml
 
 Bash の場合:
 ```bash
-./scripts/deploy-workloads-with-acr.sh gadosakamtt4okjashp7q global-azure-demo
+./scripts/deploy-workloads-with-acr.sh your-acr-name
 ```
 
 PowerShell 7 の場合:
 ```powershell
-./scripts/deploy-workloads-with-acr.ps1 -AcrName gadosakamtt4okjashp7q -Namespace global-azure-demo
+./scripts/deploy-workloads-with-acr.ps1 -AcrName your-acr-name
 ```
 
 上記スクリプトを使わずに適用する場合は、以下の手順でもデプロイできます。
@@ -720,7 +720,7 @@ PowerShell 7 の場合:
 Bash の場合:
 ```bash
 # ACR_NAME を設定
-ACR_NAME="your-acr-name.azurecr.io"
+ACR_NAME="your-acr-name"
 
 # manifest を置換して適用
 sed "s|<ACR_NAME>|${ACR_NAME}|g" k8s/namespace.yaml | kubectl apply -f -
@@ -732,7 +732,7 @@ sed "s|<ACR_NAME>|${ACR_NAME}|g" k8s/notification-service.yaml | kubectl apply -
 PowerShell 7 の場合:
 ```powershell
 # ACR_NAME を設定
-$ACR_NAME = "your-acr-name.azurecr.io"
+$ACR_NAME = "your-acr-name"
 
 # manifest を置換して適用
 (Get-Content k8s/namespace.yaml) -replace '<ACR_NAME>', $ACR_NAME | kubectl apply -f -

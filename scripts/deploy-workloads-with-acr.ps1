@@ -2,11 +2,11 @@
 
 param(
     [Parameter(Mandatory = $true)]
-    [string]$AcrName,
-    [string]$Namespace = "global-azure-demo"
+    [string]$AcrName
 )
 
 $ErrorActionPreference = "Stop"
+$Namespace = "global-azure-demo"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = Split-Path -Parent $ScriptDir

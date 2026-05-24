@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -lt 1 || $# -gt 2 ]]; then
-  echo "Usage: $0 <acr_name> [namespace]"
-  echo "Example: $0 gadosakamtt4okjashp7q global-azure-demo"
+if [[ $# -ne 1 ]]; then
+  echo "Usage: $0 <acr_name>"
+  echo "Example: $0 your-acr-name"
   exit 1
 fi
 
 ACR_NAME="$1"
-NAMESPACE="${2:-global-azure-demo}"
+NAMESPACE="global-azure-demo"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 MANIFEST_DIR="$REPO_ROOT/k8s"
 
-TMPDIR_WORK="$(mktemp -d)"
+TMPDIR_WORK="$(mktemp -d 2>/dev/null || mktemp -d -t aks-acr-render)"
 trap 'rm -rf "$TMPDIR_WORK"' EXIT
 
 MANIFESTS=(
