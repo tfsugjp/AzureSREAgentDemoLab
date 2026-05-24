@@ -557,7 +557,7 @@ PowerShell の場合:
 # $TENANT_ID = (az account show --query tenantId -o tsv)
 
 # Cosmos DB の接続文字列を取得
-$COSMOS_ACCOUNT_NAME = (az deployment group show -g rg-global-azure-demo -n main-aks --query "properties.outputs.cosmoS_ACCOUNT_NAME.value" -o tsv)
+$COSMOS_ACCOUNT_NAME = (az deployment group show -g rg-global-azure-demo -n main-aks --query "properties.outputs.COSMOS_ACCOUNT_NAME.value" -o tsv)
 $CONNECTION_STRING = (az cosmosdb keys list `
   --name $COSMOS_ACCOUNT_NAME `
   --resource-group rg-global-azure-demo `
@@ -586,9 +586,12 @@ kubectl create secret generic cosmos-db-secret `
 
 Bash の場合:
 ```bash
-# ACR をリソースグループから取得
-ACR_NAME=$(az acr list -g rg-global-azure-demo --query "[0].name" -o tsv)
-ACR_LOGIN_SERVER=$(az acr show -g rg-global-azure-demo -n "$ACR_NAME" --query loginServer -o tsv)
+# Bicep デプロイ名 (固定値にしない)
+DEPLOYMENT_NAME="<YOUR_BICEP_DEPLOYMENT_NAME>"
+
+# ACR をデプロイ出力から取得
+ACR_NAME=$(az deployment group show -g rg-global-azure-demo -n "$DEPLOYMENT_NAME" --query properties.outputs.ACR_NAME.value -o tsv)
+ACR_LOGIN_SERVER=$(az deployment group show -g rg-global-azure-demo -n "$DEPLOYMENT_NAME" --query properties.outputs.ACR_LOGIN_SERVER.value -o tsv)
 
 # az acr login はレジストリ名 (xxxx) を渡す
 az acr login --name "$ACR_NAME"
@@ -634,12 +637,12 @@ docker push "$ACR_LOGIN_SERVER/notification-service:latest"
 
 Bash の場合:
 ```bash
-# Bicep デプロイ名 (固定値にしない)
-DEPLOYMENT_NAME="<YOUR_BICEP_DEPLOYMENT_NAME>"
+# Bicep デプロイ名 (デフォルト値: main-aks)
+DEPLOYMENT_NAME="${DEPLOYMENT_NAME:-main-aks}"
 
 # AKS クレデンシャルを取得
-AKS_NAME=$(az deployment group show -g rg-global-azure-demo -n "$DEPLOYMENT_NAME" --query properties.outputs.akS_CLUSTER_NAME.value -o tsv)
-ALB_CLIENT_ID=$(az deployment group show -g rg-global-azure-demo -n "$DEPLOYMENT_NAME" --query properties.outputs.alB_IDENTITY_CLIENT_ID.value -o tsv)
+AKS_NAME=$(az deployment group show -g rg-global-azure-demo -n "$DEPLOYMENT_NAME" --query properties.outputs.AKS_CLUSTER_NAME.value -o tsv)
+ALB_CLIENT_ID=$(az deployment group show -g rg-global-azure-demo -n "$DEPLOYMENT_NAME" --query properties.outputs.ALB_IDENTITY_CLIENT_ID.value -o tsv)
 
 az aks get-credentials --resource-group rg-global-azure-demo --name $AKS_NAME
 
@@ -658,12 +661,12 @@ kubectl get gatewayclass azure-alb-external -o yaml
 
 PowerShell の場合:
 ```powershell
-# Bicep デプロイ名 (固定値にしない)
-$DEPLOYMENT_NAME = "<YOUR_BICEP_DEPLOYMENT_NAME>"
+# Bicep デプロイ名 (デフォルト値: main-aks)
+$DEPLOYMENT_NAME = if ($DEPLOYMENT_NAME) { $DEPLOYMENT_NAME } else { "main-aks" }
 
 # AKS クレデンシャルを取得
-$AKS_NAME = (az deployment group show -g rg-global-azure-demo -n $DEPLOYMENT_NAME --query "properties.outputs.akS_CLUSTER_NAME.value" -o tsv)
-$ALB_CLIENT_ID = (az deployment group show -g rg-global-azure-demo -n $DEPLOYMENT_NAME --query "properties.outputs.alB_IDENTITY_CLIENT_ID.value" -o tsv)
+$AKS_NAME = (az deployment group show -g rg-global-azure-demo -n $DEPLOYMENT_NAME --query "properties.outputs.AKS_CLUSTER_NAME.value" -o tsv)
+$ALB_CLIENT_ID = (az deployment group show -g rg-global-azure-demo -n $DEPLOYMENT_NAME --query "properties.outputs.ALB_IDENTITY_CLIENT_ID.value" -o tsv)
 
 az aks get-credentials --resource-group rg-global-azure-demo --name $AKS_NAME
 
@@ -701,16 +704,16 @@ kubectl apply -f k8s/notification-service.yaml
 
 Bash の場合:
 ```bash
-# Bicep デプロイ名 (固定値にしない)
-DEPLOYMENT_NAME="<YOUR_BICEP_DEPLOYMENT_NAME>"
+# Bicep デプロイ名 (デフォルト値: main-aks)
+DEPLOYMENT_NAME="${DEPLOYMENT_NAME:-main-aks}"
 
 # AGC リソース ID を取得
 AGC_ID=$(az deployment group show -g rg-global-azure-demo -n "$DEPLOYMENT_NAME" \
-  --query properties.outputs.agC_RESOURCE_ID.value -o tsv)
+  --query properties.outputs.AGC_RESOURCE_ID.value -o tsv)
 
 # AGC フロントエンド名を取得
 AGC_FRONTEND_NAME=$(az deployment group show -g rg-global-azure-demo -n "$DEPLOYMENT_NAME" \
-  --query properties.outputs.agC_FRONTEND_NAME.value -o tsv)
+  --query properties.outputs.AGC_FRONTEND_NAME.value -o tsv)
 
 # gateway.yaml のプレースホルダーを置換して適用
 sed -e "s|<AGC_RESOURCE_ID>|${AGC_ID}|g" \
@@ -723,14 +726,14 @@ kubectl apply -f k8s/httproutes.yaml
 
 PowerShell の場合:
 ```powershell
-# Bicep デプロイ名 (固定値にしない)
-$DEPLOYMENT_NAME = "<YOUR_BICEP_DEPLOYMENT_NAME>"
+# Bicep デプロイ名 (デフォルト値: main-aks)
+$DEPLOYMENT_NAME = if ($DEPLOYMENT_NAME) { $DEPLOYMENT_NAME } else { "main-aks" }
 
 # AGC リソース ID を取得
-$AGC_ID = (az deployment group show -g rg-global-azure-demo -n $DEPLOYMENT_NAME --query "properties.outputs.agC_RESOURCE_ID.value" -o tsv)
+$AGC_ID = (az deployment group show -g rg-global-azure-demo -n $DEPLOYMENT_NAME --query "properties.outputs.AGC_RESOURCE_ID.value" -o tsv)
 
 # AGC フロントエンド名を取得
-$AGC_FRONTEND_NAME = (az deployment group show -g rg-global-azure-demo -n $DEPLOYMENT_NAME --query "properties.outputs.agC_FRONTEND_NAME.value" -o tsv)
+$AGC_FRONTEND_NAME = (az deployment group show -g rg-global-azure-demo -n $DEPLOYMENT_NAME --query "properties.outputs.AGC_FRONTEND_NAME.value" -o tsv)
 
 # gateway.yaml のプレースホルダーを置換して適用
 (Get-Content k8s/gateway.yaml) `
@@ -746,8 +749,8 @@ kubectl apply -f k8s/httproutes.yaml
 
 Bash の場合:
 ```bash
-# Bicep デプロイ名 (固定値にしない)
-DEPLOYMENT_NAME="<YOUR_BICEP_DEPLOYMENT_NAME>"
+# Bicep デプロイ名 (デフォルト値: main-aks)
+DEPLOYMENT_NAME="${DEPLOYMENT_NAME:-main-aks}"
 
 # Gateway のステータスを確認
 kubectl get gateway -n global-azure-demo
@@ -757,14 +760,14 @@ kubectl get httproute -n global-azure-demo
 
 # AGC フロントエンド FQDN を取得
 AGC_FQDN=$(az deployment group show -g rg-global-azure-demo -n "$DEPLOYMENT_NAME" \
-  --query properties.outputs.agC_FRONTEND_FQDN.value -o tsv)
+  --query properties.outputs.AGC_FRONTEND_FQDN.value -o tsv)
 echo "Endpoint: http://${AGC_FQDN}"
 ```
 
 PowerShell の場合:
 ```powershell
-# Bicep デプロイ名 (固定値にしない)
-$DEPLOYMENT_NAME = "<YOUR_BICEP_DEPLOYMENT_NAME>"
+# Bicep デプロイ名 (デフォルト値: main-aks)
+$DEPLOYMENT_NAME = if ($DEPLOYMENT_NAME) { $DEPLOYMENT_NAME } else { "main-aks" }
 
 # Gateway のステータスを確認
 kubectl get gateway -n global-azure-demo
@@ -773,7 +776,7 @@ kubectl get gateway -n global-azure-demo
 kubectl get httproute -n global-azure-demo
 
 # AGC フロントエンド FQDN を取得
-$AGC_FQDN = (az deployment group show -g rg-global-azure-demo -n $DEPLOYMENT_NAME --query "properties.outputs.agC_FRONTEND_FQDN.value" -o tsv)
+$AGC_FQDN = (az deployment group show -g rg-global-azure-demo -n $DEPLOYMENT_NAME --query "properties.outputs.AGC_FRONTEND_FQDN.value" -o tsv)
 Write-Host "Endpoint: http://$AGC_FQDN"
 ```
 
@@ -791,7 +794,8 @@ Bash の場合:
 kubectl config current-context
 
 # 2. AKS に接続していない場合、クレデンシャルを取得
-AKS_NAME=$(az deployment group show -g rg-global-azure-demo -n main-aks --query properties.outputs.akS_CLUSTER_NAME.value -o tsv)
+DEPLOYMENT_NAME="${DEPLOYMENT_NAME:-main-aks}"
+AKS_NAME=$(az deployment group show -g rg-global-azure-demo -n "$DEPLOYMENT_NAME" --query properties.outputs.AKS_CLUSTER_NAME.value -o tsv)
 az aks get-credentials --resource-group rg-global-azure-demo --name $AKS_NAME --overwrite-existing
 
 # 3. 接続確認
@@ -884,11 +888,11 @@ PowerShell の場合:
 $TENANT_ID = "<YOUR_TENANT_ID>"   # az account show --query tenantId -o tsv
 $CLIENT_ID = "<YOUR_CLIENT_ID>"   # アプリ登録の Application (client) ID
 $CLIENT_SECRET = "<YOUR_CLIENT_SECRET>"
-$DEPLOYMENT_NAME = "<YOUR_BICEP_DEPLOYMENT_NAME>"
+$DEPLOYMENT_NAME = if ($DEPLOYMENT_NAME) { $DEPLOYMENT_NAME } else { "main-aks" }
 # AGC フロントエンド FQDN を取得
 $AGC_FQDN = (kubectl get gateway global-azure-demo-gateway -n global-azure-demo -o jsonpath='{.status.addresses[0].value}' 2>$null)
 if (-not $AGC_FQDN) {
-  $AGC_FQDN = (az deployment group show -g rg-global-azure-demo -n $DEPLOYMENT_NAME --query "properties.outputs.agC_FRONTEND_FQDN.value" -o tsv)
+  $AGC_FQDN = (az deployment group show -g rg-global-azure-demo -n $DEPLOYMENT_NAME --query "properties.outputs.AGC_FRONTEND_FQDN.value" -o tsv)
 }
 
 Write-Host "AGC endpoint: $AGC_FQDN"
@@ -920,11 +924,17 @@ fi
 
 PowerShell の場合:
 ```powershell
+# URL エンコード用の関数
+function ConvertTo-UrlEncoded($str) {
+  return [System.Net.WebUtility]::UrlEncode($str)
+}
+
+$encodedClientSecret = ConvertTo-UrlEncoded $CLIENT_SECRET
 $tokenResponse = Invoke-RestMethod `
   -Method Post `
   -Uri "https://login.microsoftonline.com/$TENANT_ID/oauth2/v2.0/token" `
   -ContentType "application/x-www-form-urlencoded" `
-  -Body "grant_type=client_credentials&client_id=$CLIENT_ID&client_secret=$CLIENT_SECRET&scope=api://$CLIENT_ID/.default"
+  -Body "grant_type=client_credentials&client_id=$CLIENT_ID&client_secret=$encodedClientSecret&scope=api://$CLIENT_ID/.default"
 
 $TOKEN = $tokenResponse.access_token
 if ($TOKEN) { Write-Host "Token acquired: yes" } else { Write-Host "Token acquired: no" }
