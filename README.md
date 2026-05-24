@@ -634,9 +634,12 @@ docker push "$ACR_LOGIN_SERVER/notification-service:latest"
 
 Bash の場合:
 ```bash
+# Bicep デプロイ名 (固定値にしない)
+DEPLOYMENT_NAME="<YOUR_BICEP_DEPLOYMENT_NAME>"
+
 # AKS クレデンシャルを取得
-AKS_NAME=$(az deployment group show -g rg-global-azure-demo -n main-aks --query properties.outputs.akS_CLUSTER_NAME.value -o tsv)
-ALB_CLIENT_ID=$(az deployment group show -g rg-global-azure-demo -n main-aks --query properties.outputs.alB_IDENTITY_CLIENT_ID.value -o tsv)
+AKS_NAME=$(az deployment group show -g rg-global-azure-demo -n "$DEPLOYMENT_NAME" --query properties.outputs.akS_CLUSTER_NAME.value -o tsv)
+ALB_CLIENT_ID=$(az deployment group show -g rg-global-azure-demo -n "$DEPLOYMENT_NAME" --query properties.outputs.alB_IDENTITY_CLIENT_ID.value -o tsv)
 
 az aks get-credentials --resource-group rg-global-azure-demo --name $AKS_NAME
 
@@ -655,9 +658,12 @@ kubectl get gatewayclass azure-alb-external -o yaml
 
 PowerShell の場合:
 ```powershell
+# Bicep デプロイ名 (固定値にしない)
+$DEPLOYMENT_NAME = "<YOUR_BICEP_DEPLOYMENT_NAME>"
+
 # AKS クレデンシャルを取得
-$AKS_NAME = (az deployment group show -g rg-global-azure-demo -n main-aks --query "properties.outputs.AKS_CLUSTER_NAME.value" -o tsv)
-$ALB_CLIENT_ID = (az deployment group show -g rg-global-azure-demo -n main-aks --query "properties.outputs.ALB_IDENTITY_CLIENT_ID.value" -o tsv)
+$AKS_NAME = (az deployment group show -g rg-global-azure-demo -n $DEPLOYMENT_NAME --query "properties.outputs.akS_CLUSTER_NAME.value" -o tsv)
+$ALB_CLIENT_ID = (az deployment group show -g rg-global-azure-demo -n $DEPLOYMENT_NAME --query "properties.outputs.alB_IDENTITY_CLIENT_ID.value" -o tsv)
 
 az aks get-credentials --resource-group rg-global-azure-demo --name $AKS_NAME
 
