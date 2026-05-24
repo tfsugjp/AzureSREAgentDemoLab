@@ -391,38 +391,39 @@ PowerShell の場合:
 az ad app update --id $APP_ID --identifier-uris "api://$APP_ID"
 ```
 
-Azure CLI のログイン資格情報でユーザー トークンを取得する場合は、委任スコープ (`access_as_user`) も必要です。`scripts/setup-entra-app.ps1` または `infra/modules/entra-app.bicep` を使う場合は自動作成されます。手動でアプリ登録した場合は以下のコマンドで追加してください。
+Azure CLI のログイン資格情報でユーザー トークンを取得する場合は、委任スコープ (`access_as_user`) も必要です。`infra/modules/entra-app.bicep` を使う場合は自動作成されます。手動でアプリ登録した場合は以下のコマンドで追加してください。
 
 Bash の場合:
 ```bash
 # アプリ登録の Object ID を取得 (appId とは別)
 OBJ_ID=$(az ad app show --id $APP_ID --query id -o tsv)
 
-# access_as_user 委任スコープを追加
-SCOPE_ID=$(python3 -c "import uuid; print(uuid.uuid4())")
-BODY=$(cat <<EOF
-{
-  "api": {
-    "oauth2PermissionScopes": [
+# 既存の oauth2PermissionScopes を取得し、access_as_user が無い場合のみ追加
+APP_JSON=$(az ad app show --id $APP_ID -o json)
+EXISTING_SCOPE_ID=$(echo "$APP_JSON" | jq -r '.api.oauth2PermissionScopes[]? | select(.value == "access_as_user") | .id' | head -n 1)
+if [ -n "$EXISTING_SCOPE_ID" ]; then
+  echo "access_as_user scope already exists: $EXISTING_SCOPE_ID"
+else
+  SCOPE_ID=$(python3 -c "import uuid; print(uuid.uuid4())")
+  SCOPES=$(echo "$APP_JSON" | jq --arg scopeId "$SCOPE_ID" '
+    (.api.oauth2PermissionScopes // []) + [
       {
-        "id": "$SCOPE_ID",
-        "adminConsentDisplayName": "Access API as user",
-        "adminConsentDescription": "Allows the app to access the API on behalf of the signed-in user",
-        "userConsentDisplayName": "Access API as you",
-        "userConsentDescription": "Allows the app to access the API on your behalf",
-        "value": "access_as_user",
-        "type": "User",
-        "isEnabled": true
+        id: $scopeId,
+        adminConsentDisplayName: "Access API as user",
+        adminConsentDescription: "Allows the app to access the API on behalf of the signed-in user",
+        userConsentDisplayName: "Access API as you",
+        userConsentDescription: "Allows the app to access the API on your behalf",
+        value: "access_as_user",
+        type: "User",
+        isEnabled: true
       }
-    ]
-  }
-}
-EOF
-)
-az rest --method PATCH \
-  --uri "https://graph.microsoft.com/v1.0/applications/$OBJ_ID" \
-  --headers "Content-Type=application/json" \
-  --body "$BODY"
+    ]')
+  BODY=$(jq -n --argjson scopes "$SCOPES" '{api: {oauth2PermissionScopes: $scopes}}')
+  az rest --method PATCH \
+    --uri "https://graph.microsoft.com/v1.0/applications/$OBJ_ID" \
+    --headers "Content-Type=application/json" \
+    --body "$BODY"
+fi
 ```
 
 PowerShell の場合:
@@ -430,36 +431,45 @@ PowerShell の場合:
 # アプリ登録の Object ID を取得 (appId とは別)
 $OBJ_ID = (az ad app show --id $APP_ID --query id -o tsv)
 
-# access_as_user 委任スコープを追加
-$scopeId = [System.Guid]::NewGuid().ToString()
-$patchBody = @{
-  api = @{
-    oauth2PermissionScopes = @(
-      @{
-        id                      = $scopeId
-        adminConsentDisplayName = "Access API as user"
-        adminConsentDescription = "Allows the app to access the API on behalf of the signed-in user"
-        userConsentDisplayName  = "Access API as you"
-        userConsentDescription  = "Allows the app to access the API on your behalf"
-        value                   = "access_as_user"
-        type                    = "User"
-        isEnabled               = $true
-      }
-    )
-  }
-} | ConvertTo-Json -Depth 5
+# 既存の oauth2PermissionScopes を取得し、access_as_user が無い場合のみ追加
+$appJson = az ad app show --id $APP_ID -o json | ConvertFrom-Json
+$existingScopes = @($appJson.api.oauth2PermissionScopes)
+$existingScope = $existingScopes | Where-Object { $_.value -eq "access_as_user" } | Select-Object -First 1
 
-$tmpScopeFile = [System.IO.Path]::GetTempFileName()
-$patchBody | Out-File -FilePath $tmpScopeFile -Encoding utf8NoBOM
-
-try {
-  az rest --method PATCH `
-    --uri "https://graph.microsoft.com/v1.0/applications/$OBJ_ID" `
-    --headers "Content-Type=application/json" `
-    --body "@$tmpScopeFile"
+if ($existingScope) {
+  Write-Host "access_as_user scope already exists: $($existingScope.id)"
 }
-finally {
-  Remove-Item $tmpScopeFile -ErrorAction SilentlyContinue
+else {
+  $scopeId = [System.Guid]::NewGuid().ToString()
+  $newScope = [ordered]@{
+    id                      = $scopeId
+    adminConsentDisplayName = "Access API as user"
+    adminConsentDescription = "Allows the app to access the API on behalf of the signed-in user"
+    userConsentDisplayName  = "Access API as you"
+    userConsentDescription  = "Allows the app to access the API on your behalf"
+    value                   = "access_as_user"
+    type                    = "User"
+    isEnabled               = $true
+  }
+
+  $patchBody = @{
+    api = @{
+      oauth2PermissionScopes = @($existingScopes + $newScope)
+    }
+  } | ConvertTo-Json -Depth 10
+
+  $tmpScopeFile = [System.IO.Path]::GetTempFileName()
+  $patchBody | Out-File -FilePath $tmpScopeFile -Encoding utf8NoBOM
+
+  try {
+    az rest --method PATCH `
+      --uri "https://graph.microsoft.com/v1.0/applications/$OBJ_ID" `
+      --headers "Content-Type=application/json" `
+      --body "@$tmpScopeFile"
+  }
+  finally {
+    Remove-Item $tmpScopeFile -ErrorAction SilentlyContinue
+  }
 }
 ```
 
@@ -995,7 +1005,7 @@ Bash の場合:
 TENANT_ID="<YOUR_TENANT_ID>"   # az account show --query tenantId -o tsv
 CLIENT_ID="<YOUR_CLIENT_ID>"   # アプリ登録の Application (client) ID
 CLIENT_SECRET="<YOUR_CLIENT_SECRET>"
-API_SCOPE="<API_APP_ID_URI>/access_as_user" # 例: api://<YOUR_CLIENT_ID>/access_as_user
+API_SCOPE="api://${CLIENT_ID}/access_as_user"
 # AGC フロントエンド FQDN を取得
 AGC_FQDN=$(kubectl get gateway global-azure-demo-gateway \
   -n global-azure-demo \
@@ -1015,7 +1025,7 @@ PowerShell の場合:
 $TENANT_ID = "<YOUR_TENANT_ID>"   # az account show --query tenantId -o tsv
 $CLIENT_ID = "<YOUR_CLIENT_ID>"   # アプリ登録の Application (client) ID
 $CLIENT_SECRET = "<YOUR_CLIENT_SECRET>"
-$API_SCOPE = "<API_APP_ID_URI>/access_as_user" # 例: api://<YOUR_CLIENT_ID>/access_as_user
+$API_SCOPE = "api://$CLIENT_ID/access_as_user"
 $DEPLOYMENT_NAME = if ($DEPLOYMENT_NAME) { $DEPLOYMENT_NAME } else { "main-aks" }
 # AGC フロントエンド FQDN を取得
 $AGC_FQDN = (kubectl get gateway global-azure-demo-gateway -n global-azure-demo -o jsonpath='{.status.addresses[0].value}' 2>$null)
