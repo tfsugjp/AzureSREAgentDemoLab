@@ -1,6 +1,6 @@
 # Azure SRE Agent 20-Minute Demo Scenario
 
-This is an **executable, time-boxed scenario** demonstrating how Azure SRE Agent detects incidents, opens a downstream ticket in Azure DevOps, GitHub, or both, and suggests resolutions using memory and reasoning.
+This is an **executable, time-boxed scenario** demonstrating how Azure SRE Agent detects incidents, opens a downstream ticket in your configured destination through an Azure relay, and suggests resolutions using memory and reasoning.
 
 **Total Duration: 20 minutes**
 
@@ -8,7 +8,7 @@ This is an **executable, time-boxed scenario** demonstrating how Azure SRE Agent
 
 ## Scenario Overview
 
-**Story**: A production incident has been detected in the Order Service. High latency is detected by Azure Monitor, which automatically creates an incident record in Azure DevOps, a GitHub issue, or both. The SRE Agent investigates the incident using telemetry data and runbook knowledge, then recommends a resolution.
+**Story**: A production incident has been detected in the Order Service. High latency is detected by Azure Monitor, which forwards the alert to your configured Logic App or Azure Function relay. That relay creates an incident record in Azure DevOps, a GitHub issue, or both. The SRE Agent investigates the incident using telemetry data and runbook knowledge, then recommends a resolution.
 
 **Expected Flow**:
 1. Trigger incident (simulate traffic) — **2 min**
@@ -27,6 +27,7 @@ Required:
 - `curl` or `http` CLI tool (for generating load)
 - Azure DevOps account with access to `SRE-Demo` project if you use the Azure DevOps route
 - GitHub repository access if you use the GitHub route
+- Logic App or Azure Function relay configured for the downstream ticket destination you want to demo
 - SRE Agent instance configured and running
 
 ### Choose Your Ticket Destination
@@ -107,7 +108,14 @@ Write-Host "✅ Load test complete"
 
 Check that Application Insights is recording the increased traffic:
 
+> [!IMPORTANT]
+> Run these KQL queries from the **Application Insights** resource or the **Log Analytics Workspace** Logs experience.
+> If you open **Logs** from an individual **Container App** resource, the application telemetry tables used below (`AppRequests`, `AppExceptions`, `AppDependencies`) might not be in scope.
+
+#### Application Insights / Log Analytics query
+
 **Bash:**
+
 ```bash
 export LOG_ANALYTICS_WS_ID=$(az monitor log-analytics workspace list \
   --resource-group $RESOURCE_GROUP \
@@ -119,15 +127,16 @@ export RESOURCE_GROUP="<your-resource-group>"
 az monitor log-analytics query \
   --workspace $LOG_ANALYTICS_WS_ID \
   --analytics-query "
-    requests
-    | where timestamp > ago(5m)
-    | summarize AvgDuration = avg(duration), Count = count() by name
+    AppRequests
+    | where TimeGenerated > ago(5m)
+    | summarize AvgDurationMs = avg(DurationMs), Count = sum(ItemCount) by Name
     | top 10 by Count desc
   " \
   --resource-group $RESOURCE_GROUP
 ```
 
 **PowerShell 7:**
+
 ```powershell
 $resourceGroup = "<your-resource-group>"
 $logAnalyticsWsId = az monitor log-analytics workspace list `
@@ -136,9 +145,9 @@ $logAnalyticsWsId = az monitor log-analytics workspace list `
   --output tsv
 
 $query = @"
-requests
-| where timestamp > ago(5m)
-| summarize AvgDuration = avg(duration), Count = count() by name
+AppRequests
+| where TimeGenerated > ago(5m)
+| summarize AvgDurationMs = avg(DurationMs), Count = sum(ItemCount) by Name
 | top 10 by Count desc
 "@
 
@@ -147,6 +156,29 @@ az monitor log-analytics query `
   --analytics-query $query `
   --resource-group $resourceGroup
 ```
+
+#### Container App Logs query
+
+Use Container App Logs when you want stdout/stderr output or platform events rather than request telemetry.
+
+```kusto
+ContainerAppConsoleLogs
+| where TimeGenerated > ago(15m)
+| where ContainerAppName contains "ord"
+| project TimeGenerated, ContainerAppName, RevisionName, ContainerName, Stream, Log
+| order by TimeGenerated desc
+```
+
+```kusto
+ContainerAppSystemLogs
+| where TimeGenerated > ago(15m)
+| where ContainerAppName contains "ord"
+| project TimeGenerated, ContainerAppName, RevisionName, ReplicaName, Reason, Log
+| order by TimeGenerated desc
+```
+
+> [!NOTE]
+> In some environments or older views, you might see `ContainerAppConsoleLogs_CL` / `ContainerAppSystemLogs_CL` instead. If so, use the table names and suffixed column names shown in that workspace.
 
 ---
 
@@ -209,6 +241,8 @@ If `$ALERT_RULE_NAME` or `$alertRuleName` is empty, verify that the SRE overlay 
 
 The Action Group should have triggered your Azure-native relay and created the downstream ticket selected for the demo.
 
+The exact destination depends on how your relay is configured. The Bicep overlay wires Azure Monitor to the relay, but the relay implementation decides whether it creates an Azure DevOps work item, a GitHub issue, or both.
+
 #### Option A: Azure DevOps
 
 1. Navigate to **Azure DevOps -> SRE-Demo Project -> Boards**
@@ -236,7 +270,9 @@ Verify that both of the above records were created from the same alert and that 
 
 **If no ticket appears**:
 - Check the Action Group receiver configuration
+- Verify the Logic App receiver callback URL matches the trigger `listCallbackUrl` output and still contains `/triggers/` and `sig=`
 - Check the Logic App or Azure Function run history
+- Verify the relay implementation is configured for the destination you selected; an Azure DevOps-only workflow will not create a GitHub issue
 - Verify Azure DevOps or GitHub credentials in the relay
 
 ---
@@ -260,37 +296,63 @@ SRE Agent Task:
 
 The SRE Agent should execute the following queries via Log Analytics:
 
-**Query 1: Performance Timeline**
+> [!IMPORTANT]
+> Use these queries from **Application Insights** or **Log Analytics Workspace** Logs, not from the resource-scoped **Container App** Logs blade.
+
+#### Query 1: Performance Timeline
+
 ```kusto
-requests
-| where timestamp > ago(15m)
-| where name contains "orders"
+AppRequests
+| where TimeGenerated > ago(15m)
+| where Name contains "orders"
 | summarize 
-    AvgDuration = avg(duration),
-    P95Duration = percentile(duration, 95),
-    P99Duration = percentile(duration, 99),
-    FailureRate = (todouble(sum(itemCount)) - todouble(sum(successful))) / todouble(sum(itemCount)) * 100
-  by bin(timestamp, 1m)
+    AvgDurationMs = avg(DurationMs),
+    P95DurationMs = percentile(DurationMs, 95),
+    P99DurationMs = percentile(DurationMs, 99),
+    FailureRate = 100.0 * countif(Success == false) / count()
+  by bin(TimeGenerated, 1m)
 | render timechart
 ```
 
-**Query 2: Error Analysis**
+#### Query 2: Error Analysis
+
 ```kusto
-exceptions
-| where timestamp > ago(15m)
-| summarize Count = count() by exceptionType, outerMessage
+AppExceptions
+| where TimeGenerated > ago(15m)
+| summarize Count = sum(ItemCount) by ExceptionType, OuterMessage
 | top 10 by Count desc
 ```
 
-**Query 3: Dependency Performance**
+#### Query 3: Dependency Performance
+
 ```kusto
-dependencies
-| where timestamp > ago(15m)
-| where target contains "cosmos"
+AppDependencies
+| where TimeGenerated > ago(15m)
+| where Target contains "cosmos"
 | summarize 
-    AvgDuration = avg(duration),
-    FailureRate = (failures / count()) * 100
-  by type, target
+    AvgDurationMs = avg(DurationMs),
+    FailureRate = 100.0 * countif(Success == false) / count()
+  by DependencyType, Target
+```
+
+#### Supporting queries from Container App Logs
+
+Use these when you need application stdout/stderr or platform-level revision events from the **Container App** Logs blade.
+
+```kusto
+ContainerAppConsoleLogs
+| where TimeGenerated > ago(15m)
+| where ContainerAppName contains "ord"
+| project TimeGenerated, ContainerAppName, RevisionName, ContainerName, Stream, Log
+| order by TimeGenerated desc
+```
+
+```kusto
+ContainerAppSystemLogs
+| where TimeGenerated > ago(15m)
+| where ContainerAppName contains "ord"
+| project TimeGenerated, ContainerAppName, RevisionName, ReplicaName, Reason, Log
+| order by TimeGenerated desc
 ```
 
 **Expected Findings**:
@@ -462,9 +524,9 @@ LOG_ANALYTICS_WS_ID=$(az monitor log-analytics workspace list \
 az monitor log-analytics query \
   --workspace $LOG_ANALYTICS_WS_ID \
   --analytics-query "
-    requests
-    | where timestamp > ago(5m) and name contains 'orders'
-    | summarize AvgDuration = avg(duration), P95 = percentile(duration, 95)
+    AppRequests
+    | where TimeGenerated > ago(5m) and Name contains 'orders'
+    | summarize AvgDurationMs = avg(DurationMs), P95DurationMs = percentile(DurationMs, 95)
   " \
   --resource-group $RESOURCE_GROUP
 
@@ -486,9 +548,9 @@ $logAnalyticsWsId = az monitor log-analytics workspace list `
   --output tsv
 
 $query = @"
-requests
-| where timestamp > ago(5m) and name contains 'orders'
-| summarize AvgDuration = avg(duration), P95 = percentile(duration, 95)
+AppRequests
+| where TimeGenerated > ago(5m) and Name contains 'orders'
+| summarize AvgDurationMs = avg(DurationMs), P95DurationMs = percentile(DurationMs, 95)
 "@
 
 az monitor log-analytics query `
@@ -598,9 +660,21 @@ After completing the demo:
 - Check evaluation period: Alert needs 5+ minutes of data
 - Verify metric emission: Check Application Insights
 
+### Query Fails with "Failed to resolve table or column expression named 'requests'"
+- Open **Logs** from the **Application Insights** resource or the **Log Analytics Workspace**, not from the individual **Container App** resource
+- Use workspace-based Application Insights tables: `AppRequests`, `AppExceptions`, and `AppDependencies`
+- Use `TimeGenerated`, `Name`, `DurationMs`, `Success`, `ExceptionType`, `OuterMessage`, `DependencyType`, and `Target` column names in those queries
+
+### Not Sure What to Query from Container App Logs
+- Use `ContainerAppConsoleLogs` for application stdout/stderr
+- Use `ContainerAppSystemLogs` for revision provisioning and platform events
+- If the Logs blade shows `_CL` tables instead, use the table names and suffixed columns visible in that workspace
+
 ### Ticket Not Created
 - Check the Action Group receiver target
+- Verify the Logic App receiver callback URL matches the trigger `listCallbackUrl` result and includes `/triggers/` plus `sig=`
 - Verify the Logic App or Azure Function run result
+- Verify the relay implementation actually creates the destination you expect (Azure DevOps, GitHub, or both)
 - Verify Azure DevOps or GitHub authentication
 
 ### SRE Agent Doesn't See the Ticket

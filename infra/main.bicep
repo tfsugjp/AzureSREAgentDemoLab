@@ -34,7 +34,7 @@ param enableSreDemo bool = false
 @description('Optional Logic App resource ID used to route Azure Monitor incidents downstream.')
 param incidentRelayResourceId string = ''
 
-@description('Optional Logic App callback URL used by the Action Group receiver.')
+@description('Optional Logic App callback URL used by the Action Group receiver. Pass the full trigger invoke URL returned by listCallbackUrl, not the workflow overview URL.')
 @secure()
 param incidentRelayCallbackUrl string = ''
 

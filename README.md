@@ -1084,7 +1084,7 @@ $response.StatusCode  # → 500
 
 ## Azure SRE Agent Demo Integration
 
-This repository includes a **complete, executable 20-minute demo** showing how the Azure SRE Agent detects incidents, routes them to Azure DevOps, GitHub, or both, and uses memory & reasoning to suggest resolutions.
+This repository includes a **complete, executable 20-minute demo** showing how the Azure SRE Agent detects incidents, forwards them through an Azure relay, and uses memory & reasoning to suggest resolutions for the downstream work item or issue.
 
 ### Quick Start
 
@@ -1124,14 +1124,16 @@ This repository includes a **complete, executable 20-minute demo** showing how t
        failedRequestCountThreshold=5
    ```
 
+   `incidentRelayCallbackUrl` must be the full HTTP trigger callback URL returned by `listCallbackUrl`, such as `https://.../triggers/.../paths/invoke?...&sig=...`. Do not use the Logic App overview URL.
+
 2. **Run the Demo** — Complete incident cycle (20 min)
    - See: [SRE Scenario - 20 Minute Demo](./docs/sre-scenario-20min.md)
 
 ### Key Features
 
 ✅ **Azure Monitor Alerts** — Auto-detect latency & error rate anomalies
-✅ **Azure DevOps Integration** — Work items can be created automatically through an Azure relay
-✅ **GitHub Integration** — Issues can be created from the same Azure Monitor incident through an Azure relay
+✅ **Azure-native Relay Integration** — Logic Apps or Azure Functions receive the Action Group payload
+✅ **Downstream Ticket Routing** — Your relay can create Azure DevOps work items, GitHub issues, or both
 ✅ **SRE Agent Memory & Runbooks** — Knowledge base for incident response
 ✅ **Agent Reasoning** — Suggests root causes with confidence scores
 ✅ **End-to-End Demo** — Executable in 20 minutes
@@ -1155,7 +1157,7 @@ Alert Rules (latency, error rate)
     ↓
 Action Group → Logic App / Azure Function
     ↓
-Azure DevOps Work Item and/or GitHub Issue
+Configured downstream work item / issue
     ↓
 SRE Agent (reads incident + memory + telemetry)
     ↓
@@ -1165,7 +1167,7 @@ Agent Reasoning → Suggests root cause & resolution
 ### Resources Deployed (when enabled)
 
 - 2 Metric Alert Rules (latency, failed requests)
-- 1 Action Group (routes to Azure-native relay for Azure DevOps and/or GitHub)
+- 1 Action Group (routes to an Azure-native relay; the relay decides Azure DevOps, GitHub, or both)
 - 1 Scheduled Query Alert (custom incident detection)
 - Diagnostic Settings on Container Apps Environment
 

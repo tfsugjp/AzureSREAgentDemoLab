@@ -121,6 +121,46 @@ if ([string]::IsNullOrWhiteSpace($actionGroup)) {
     Add-Failure
 } else {
     Write-Success "Action Group: $actionGroup"
+
+    try {
+        $actionGroupDetails = az monitor action-group show `
+            --resource-group $ResourceGroup `
+            --name $actionGroup `
+            --output json 2>$null | ConvertFrom-Json
+
+        $logicAppReceivers = @($actionGroupDetails.logicAppReceivers)
+        if ($logicAppReceivers.Count -eq 0) {
+            Write-Warn "Action Group does not contain any Logic App receivers"
+        } else {
+            foreach ($receiver in $logicAppReceivers) {
+                Write-Info "Validating Logic App receiver callback URL for $($receiver.name)..."
+
+                $workflow = az resource show `
+                    --ids $receiver.resourceId `
+                    --output json 2>$null | ConvertFrom-Json
+
+                $triggerName = $workflow.properties.definition.triggers.PSObject.Properties.Name | Select-Object -First 1
+                $expectedCallbackUrl = az rest `
+                    --method post `
+                    --url "https://management.azure.com$($receiver.resourceId)/triggers/$triggerName/listCallbackUrl?api-version=2019-05-01" `
+                    --query value `
+                    --output tsv 2>$null
+
+                if ([string]::IsNullOrWhiteSpace($expectedCallbackUrl)) {
+                    Write-ErrorMessage "Unable to retrieve the Logic App trigger callback URL for $($receiver.resourceId)"
+                    Add-Failure
+                } elseif ($receiver.callbackUrl -ne $expectedCallbackUrl) {
+                    Write-ErrorMessage "Logic App receiver callback URL does not match the trigger callback URL. Use listCallbackUrl output, not the Logic App overview URL."
+                    Add-Failure
+                } else {
+                    Write-Success "Logic App receiver callback URL matches the trigger callback URL"
+                }
+            }
+        }
+    } catch {
+        Write-Warn "Unable to validate Logic App receiver callback URL: $($_.Exception.Message)"
+        Add-Failure
+    }
 }
 
 # Check 5: Container Apps
@@ -157,7 +197,7 @@ if (-not [string]::IsNullOrWhiteSpace($logAnalyticsWsId)) {
     try {
         $queryResult = az monitor log-analytics query `
             --workspace $logAnalyticsWsId `
-            --analytics-query "requests | where timestamp > ago(1h) | count" `
+            --analytics-query "AppRequests | where TimeGenerated > ago(1h) | summarize RequestCount = sum(ItemCount)" `
             --output json 2>$null | ConvertFrom-Json
 
         $requestCount = [int]($queryResult[0][0])
@@ -198,7 +238,7 @@ Write-Host ""
 Write-Host "2. Monitor alert status:"
 Write-Host "   az monitor metrics alert list --resource-group $ResourceGroup"
 Write-Host ""
-Write-Host "3. Check Azure DevOps work items or GitHub issues"
+Write-Host "3. Check the work item or issue in your configured downstream destination"
 Write-Host ""
 Write-Host "4. See detailed guide: docs/sre-scenario-20min.md"
 Write-Host ""

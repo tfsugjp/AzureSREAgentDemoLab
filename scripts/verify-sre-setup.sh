@@ -121,6 +121,46 @@ if [[ -z "$ACTION_GROUP" ]]; then
     record_failure
 else
     log_success "Action Group: $ACTION_GROUP"
+
+    ACTION_GROUP_JSON=$(az monitor action-group show \
+        --resource-group "$RESOURCE_GROUP" \
+        --name "$ACTION_GROUP" \
+        --output json 2>/dev/null || echo "")
+
+    if [[ -n "$ACTION_GROUP_JSON" ]]; then
+        LOGIC_APP_RECEIVER_COUNT=$(echo "$ACTION_GROUP_JSON" | jq '.logicAppReceivers | length')
+        if [[ "$LOGIC_APP_RECEIVER_COUNT" -eq 0 ]]; then
+            log_warn "Action Group does not contain any Logic App receivers"
+        else
+            for index in $(seq 0 $((LOGIC_APP_RECEIVER_COUNT - 1))); do
+                RECEIVER_NAME=$(echo "$ACTION_GROUP_JSON" | jq -r ".logicAppReceivers[$index].name")
+                RECEIVER_RESOURCE_ID=$(echo "$ACTION_GROUP_JSON" | jq -r ".logicAppReceivers[$index].resourceId")
+                RECEIVER_CALLBACK_URL=$(echo "$ACTION_GROUP_JSON" | jq -r ".logicAppReceivers[$index].callbackUrl")
+
+                log_info "Validating Logic App receiver callback URL for $RECEIVER_NAME..."
+                WORKFLOW_JSON=$(az resource show --ids "$RECEIVER_RESOURCE_ID" --output json 2>/dev/null || echo "")
+                TRIGGER_NAME=$(echo "$WORKFLOW_JSON" | jq -r '.properties.definition.triggers | keys[0] // empty')
+                EXPECTED_CALLBACK_URL=$(az rest \
+                    --method post \
+                    --url "https://management.azure.com${RECEIVER_RESOURCE_ID}/triggers/${TRIGGER_NAME}/listCallbackUrl?api-version=2019-05-01" \
+                    --query value \
+                    --output tsv 2>/dev/null || echo "")
+
+                if [[ -z "$EXPECTED_CALLBACK_URL" ]]; then
+                    log_error "Unable to retrieve the Logic App trigger callback URL for $RECEIVER_RESOURCE_ID"
+                    record_failure
+                elif [[ "$RECEIVER_CALLBACK_URL" != "$EXPECTED_CALLBACK_URL" ]]; then
+                    log_error "Logic App receiver callback URL does not match the trigger callback URL. Use listCallbackUrl output, not the Logic App overview URL."
+                    record_failure
+                else
+                    log_success "Logic App receiver callback URL matches the trigger callback URL"
+                fi
+            done
+        fi
+    else
+        log_warn "Unable to inspect Action Group details"
+        record_failure
+    fi
 fi
 
 # Check 5: Container Apps
@@ -149,7 +189,7 @@ if [[ -n "$LOG_ANALYTICS_WS_ID" ]]; then
     log_info "Testing Log Analytics queries..."
     QUERY_RESULT=$(az monitor log-analytics query \
         --workspace "$LOG_ANALYTICS_WS_ID" \
-        --analytics-query "requests | where timestamp > ago(1h) | count" \
+        --analytics-query "AppRequests | where TimeGenerated > ago(1h) | summarize RequestCount = sum(ItemCount)" \
         --output json 2>/dev/null | jq -r '.[0][0]' || echo "0")
 
     if [[ "$QUERY_RESULT" -gt 0 ]]; then
@@ -183,7 +223,7 @@ echo ""
 echo "2. Monitor alert status:"
 echo "   az monitor metrics alert list --resource-group $RESOURCE_GROUP"
 echo ""
-echo "3. Check Azure DevOps work items or GitHub issues"
+echo "3. Check the work item or issue in your configured downstream destination"
 echo ""
 echo "4. See detailed guide: docs/sre-scenario-20min.md"
 echo ""
