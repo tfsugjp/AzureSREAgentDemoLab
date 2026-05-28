@@ -129,15 +129,17 @@ az deployment group create \
   --resource-group $RESOURCE_GROUP \
   --template-file infra/sre-overlay.bicep \
   --parameters \
-    environmentName=$ENVIRONMENT_NAME \
-    location=$LOCATION \
-    incidentRelayResourceId=$LOGIC_APP_RESOURCE_ID \
-    incidentRelayCallbackUrl=$LOGIC_APP_CALLBACK_URL \
-    responseTimeThresholdMs=500 \
-    failedRequestCountThreshold=5
+    "environmentName=$ENVIRONMENT_NAME" \
+    "location=$LOCATION" \
+    "incidentRelayResourceId=$LOGIC_APP_RESOURCE_ID" \
+    "incidentRelayCallbackUrl=$LOGIC_APP_CALLBACK_URL" \
+    "responseTimeThresholdMs=500" \
+    "failedRequestCountThreshold=5"
 ```
 
 セットアップ後も Container Apps の image が `mcr.microsoft.com/dotnet/samples:aspnetapp` の場合は、リポジトリ ルートで `azd deploy` を実行して Catalog、Order、Notification のサービス image を反映してください。
+
+`incidentRelayCallbackUrl` には `&sp=`、`&sv=`、`&sig=` を含むため、各 `key=value` 引数を引用符で囲まないとシェルが別コマンドとして解釈することがあります。
 
 ---
 

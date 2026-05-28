@@ -159,7 +159,7 @@ echo "   LOGIC_APP_CALLBACK_URL=\$(az rest --method post --url \"https://managem
 echo ""
 echo "2. Deploy the SRE overlay with explicit parameters:"
 echo ""
-echo "   az deployment group create --resource-group $RESOURCE_GROUP --template-file infra/sre-overlay.bicep --parameters environmentName=$ENVIRONMENT_NAME location=$RESOURCE_GROUP_LOCATION incidentRelayResourceId=<relay-resource-id> incidentRelayCallbackUrl=\$LOGIC_APP_CALLBACK_URL responseTimeThresholdMs=500 failedRequestCountThreshold=5"
+echo "   az deployment group create --resource-group $RESOURCE_GROUP --template-file infra/sre-overlay.bicep --parameters \"environmentName=$ENVIRONMENT_NAME\" \"location=$RESOURCE_GROUP_LOCATION\" \"incidentRelayResourceId=<relay-resource-id>\" \"incidentRelayCallbackUrl=\$LOGIC_APP_CALLBACK_URL\" \"responseTimeThresholdMs=500\" \"failedRequestCountThreshold=5\""
 echo "   Use infra/sre-overlay.bicep for SRE-only updates. Do not re-run infra/main.bicep just to update SRE resources, because it can reset Container Apps to the provisioning placeholder image."
 echo "   The callback URL must contain '/triggers/' and 'sig=' or Azure Monitor will not invoke the Logic App."
 echo ""

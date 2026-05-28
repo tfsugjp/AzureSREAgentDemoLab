@@ -1096,12 +1096,12 @@ This repository includes a **complete, executable 20-minute demo** showing how t
      --resource-group <resource-group> \
      --template-file infra/sre-overlay.bicep \
      --parameters \
-       environmentName=<environment-name> \
-       location=<base-resource-location> \
-       incidentRelayResourceId=<logic-app-resource-id> \
-       incidentRelayCallbackUrl=<logic-app-callback-url> \
-       responseTimeThresholdMs=500 \
-       failedRequestCountThreshold=5
+       "environmentName=<environment-name>" \
+       "location=<base-resource-location>" \
+       "incidentRelayResourceId=<logic-app-resource-id>" \
+       "incidentRelayCallbackUrl=<logic-app-callback-url>" \
+       "responseTimeThresholdMs=500" \
+       "failedRequestCountThreshold=5"
    ```
 
    PowerShell の場合:
@@ -1110,15 +1110,17 @@ This repository includes a **complete, executable 20-minute demo** showing how t
      --resource-group <resource-group> `
      --template-file infra/sre-overlay.bicep `
      --parameters `
-       environmentName=<environment-name> `
-       location=<base-resource-location> `
-       incidentRelayResourceId=<logic-app-resource-id> `
-       incidentRelayCallbackUrl=<logic-app-callback-url> `
-       responseTimeThresholdMs=500 `
-       failedRequestCountThreshold=5
+       "environmentName=<environment-name>" `
+       "location=<base-resource-location>" `
+       "incidentRelayResourceId=<logic-app-resource-id>" `
+       "incidentRelayCallbackUrl=<logic-app-callback-url>" `
+       "responseTimeThresholdMs=500" `
+       "failedRequestCountThreshold=5"
    ```
 
    `incidentRelayCallbackUrl` must be the full HTTP trigger callback URL returned by `listCallbackUrl`, such as `https://.../triggers/.../paths/invoke?...&sig=...`. Do not use the Logic App overview URL.
+
+   The quotes around each `key=value` argument are required when the callback URL contains query string parameters such as `&sp=`, `&sv=`, and `&sig=`.
 
    > **注意**: SRE リソースだけを更新する場合は `infra/sre-overlay.bicep` を使ってください。`azd deploy` 後に `infra/main.bicep` を再実行すると、Container Apps がプロビジョニング用サンプル image (`mcr.microsoft.com/dotnet/samples:aspnetapp`) に戻る可能性があります。サンプル image が表示される場合は `azd deploy` を実行してサービス image を再反映してください。
 

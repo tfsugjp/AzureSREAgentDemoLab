@@ -190,12 +190,12 @@ az deployment group create \
   --resource-group $RESOURCE_GROUP \
   --template-file infra/sre-overlay.bicep \
   --parameters \
-    environmentName=$ENVIRONMENT_NAME \
-    location=$LOCATION \
-    incidentRelayResourceId=$LOGIC_APP_RESOURCE_ID \
-    incidentRelayCallbackUrl=$LOGIC_APP_CALLBACK_URL \
-    responseTimeThresholdMs=500 \
-    failedRequestCountThreshold=5
+    "environmentName=$ENVIRONMENT_NAME" \
+    "location=$LOCATION" \
+    "incidentRelayResourceId=$LOGIC_APP_RESOURCE_ID" \
+    "incidentRelayCallbackUrl=$LOGIC_APP_CALLBACK_URL" \
+    "responseTimeThresholdMs=500" \
+    "failedRequestCountThreshold=5"
 ```
 
 **PowerShell 7:**
@@ -206,15 +206,17 @@ az deployment group create `
   --resource-group $env:RESOURCE_GROUP `
   --template-file infra/sre-overlay.bicep `
   --parameters `
-    environmentName=$env:ENVIRONMENT_NAME `
-    location=$env:LOCATION `
-    incidentRelayResourceId=$logicAppResourceId `
-    incidentRelayCallbackUrl=$logicAppCallbackUrl `
-    responseTimeThresholdMs=500 `
-    failedRequestCountThreshold=5
+    "environmentName=$env:ENVIRONMENT_NAME" `
+    "location=$env:LOCATION" `
+    "incidentRelayResourceId=$logicAppResourceId" `
+    "incidentRelayCallbackUrl=$logicAppCallbackUrl" `
+    "responseTimeThresholdMs=500" `
+    "failedRequestCountThreshold=5"
 ```
 
 If Container Apps still show `mcr.microsoft.com/dotnet/samples:aspnetapp` after setup, run `azd deploy` from the repository root to push the Catalog, Order, and Notification service images.
+
+The quotes around each `key=value` argument are required when the callback URL contains query string parameters such as `&sp=`, `&sv=`, and `&sig=`. Without quoting, your shell can treat those fragments as separate commands.
 
 ---
 
