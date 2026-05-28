@@ -247,26 +247,75 @@ Write-Info "Starting synthetic load test..."
 Write-Info "⏱ This will generate high request volume to trigger alerts"
 Write-Host ""
 
+function Invoke-SequentialRequests {
+    param([int]$Count)
+
+    for ($requestNumber = 1; $requestNumber -le $Count; $requestNumber++) {
+        try {
+            Invoke-WebRequest `
+                -Uri $Endpoint `
+                -UseBasicParsing `
+                -TimeoutSec 30 `
+                -Headers $requestHeaders `
+                -SkipHttpErrorCheck `
+                -ErrorAction Stop | Out-Null
+        } catch {
+            # Ignore errors during load test
+        }
+    }
+}
+
+$script:CanUseBackgroundJobs = "$($ExecutionContext.SessionState.LanguageMode)" -eq 'FullLanguage'
+$script:ReportedSequentialFallback = $false
+
+if (-not $script:CanUseBackgroundJobs) {
+    Write-Warn "This PowerShell session does not allow Start-Job. Falling back to sequential requests per batch."
+    $script:ReportedSequentialFallback = $true
+}
+
 function Send-Requests {
     param([int]$Count)
-    
-    $jobs = @()
-    
-    for ($i = 1; $i -le $Count; $i++) {
-        $job = Start-Job -ScriptBlock {
-            param($url, $headers)
-            try {
-                Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 30 -Headers $headers -ErrorAction Stop | Out-Null
-            } catch {
-                # Ignore errors during load test
-            }
-        } -ArgumentList $Endpoint, $requestHeaders
-        
-        $jobs += $job
+
+    if (-not $script:CanUseBackgroundJobs) {
+        Invoke-SequentialRequests -Count $Count
+        return
     }
-    
-    # Wait for all jobs to complete
-    $jobs | Wait-Job | Remove-Job
+
+    $jobs = @()
+
+    try {
+        for ($i = 1; $i -le $Count; $i++) {
+            $job = Start-Job -ErrorAction Stop -ScriptBlock {
+                param($url, $headers)
+                try {
+                    Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 30 -Headers $headers -SkipHttpErrorCheck -ErrorAction Stop | Out-Null
+                } catch {
+                    # Ignore errors during load test
+                }
+            } -ArgumentList $Endpoint, $requestHeaders
+
+            $jobs += $job
+        }
+
+        if ($jobs.Count -gt 0) {
+            $jobs | Wait-Job | Receive-Job -ErrorAction SilentlyContinue | Out-Null
+            $jobs | Remove-Job -Force -ErrorAction SilentlyContinue
+        }
+    } catch {
+        if ($jobs.Count -gt 0) {
+            $jobs | Stop-Job -ErrorAction SilentlyContinue
+            $jobs | Remove-Job -Force -ErrorAction SilentlyContinue
+        }
+
+        $script:CanUseBackgroundJobs = $false
+
+        if (-not $script:ReportedSequentialFallback) {
+            Write-Warn "Background jobs are unavailable in this PowerShell session. Falling back to sequential requests for the remaining load test."
+            $script:ReportedSequentialFallback = $true
+        }
+
+        Invoke-SequentialRequests -Count $Count
+    }
 }
 
 # Calculate number of iterations

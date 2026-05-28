@@ -116,26 +116,30 @@ $logicAppCallbackUrl = az rest `
   --output tsv
 ```
 
-### 2.2 インフラをデプロイ
+### 2.2 SRE オーバーレイ リソースをデプロイ
+
+SRE リソースは専用のオーバーレイ テンプレートでデプロイします。このテンプレートは既存の Log Analytics、Application Insights、Container Apps Environment を参照するだけで、Container Apps の revision や image は更新しません。
+
+> [!WARNING]
+> `azd deploy` 後に SRE リソースだけを更新する目的で `infra/main.bicep` を再実行しないでください。ベース テンプレートはプロビジョニング用プレースホルダーとして `mcr.microsoft.com/dotnet/samples:aspnetapp` を使うため、Catalog、Order、Notification の Container Apps がサンプル アプリへ戻る可能性があります。
 
 ```bash
 az deployment group create \
   --name globalazdemo-sre \
   --resource-group $RESOURCE_GROUP \
-  --template-file infra/main.bicep \
+  --template-file infra/sre-overlay.bicep \
   --parameters \
-    environmentName=$ENVIRONMENT_NAME \
-    entraTenantId=<your-tenant-id> \
-    entraClientId=<your-client-id> \
-    entraAudience=<your-audience> \
-    enableSreDemo=true \
-    incidentRelayResourceId=$LOGIC_APP_RESOURCE_ID \
-    incidentRelayCallbackUrl=$LOGIC_APP_CALLBACK_URL \
-    responseTimeThresholdMs=500 \
-    failedRequestCountThreshold=5
+    "environmentName=$ENVIRONMENT_NAME" \
+    "location=$LOCATION" \
+    "incidentRelayResourceId=$LOGIC_APP_RESOURCE_ID" \
+    "incidentRelayCallbackUrl=$LOGIC_APP_CALLBACK_URL" \
+    "responseTimeThresholdMs=500" \
+    "failedRequestCountThreshold=5"
 ```
 
-すでに `azd up` でベース環境を作成している場合は、同じリソース グループに対してこのオーバーレイ デプロイを後から実行できます。
+セットアップ後も Container Apps の image が `mcr.microsoft.com/dotnet/samples:aspnetapp` の場合は、リポジトリ ルートで `azd deploy` を実行して Catalog、Order、Notification のサービス image を反映してください。
+
+`incidentRelayCallbackUrl` には `&sp=`、`&sv=`、`&sig=` を含むため、各 `key=value` 引数を引用符で囲まないとシェルが別コマンドとして解釈することがあります。
 
 ---
 
