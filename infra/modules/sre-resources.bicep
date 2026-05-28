@@ -102,7 +102,7 @@ resource alertRuleHighErrors 'Microsoft.Insights/metricAlerts@2018-03-01' = if (
           metricName: 'requests/failed'
           operator: 'GreaterThan'
           threshold: failedRequestCountThreshold
-          timeAggregation: 'Total'
+          timeAggregation: 'Count'
           dimensions: []
         }
       ]
@@ -147,7 +147,7 @@ resource actionGroup 'Microsoft.Insights/actionGroups@2023-01-01' = {
 }
 
 // Log Query Alert for Custom Incident Detection
-resource logQueryAlert 'Microsoft.Insights/scheduledQueryRules@2021-06-01-preview' = if (logAnalyticsWorkspaceId != '') {
+resource logQueryAlert 'Microsoft.Insights/scheduledQueryRules@2023-12-01' = if (logAnalyticsWorkspaceId != '') {
   name: take('alert-custom-incident-${envToken}-${uniqueToken}', 260)
   location: location
   tags: tags
@@ -199,7 +199,7 @@ resource diagnosticSetting 'Microsoft.Insights/diagnosticSettings@2021-05-01-pre
         enabled: true
       }
       {
-        category: 'ContainerAppConsoleLog'
+        category: 'ContainerAppConsoleLogs'
         enabled: true
       }
     ]
