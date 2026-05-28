@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Azure SRE Agent Demo Setup Script (Bash)
-# This script configures SRE resources including alerts, action groups, and Azure DevOps integration.
+# This script validates SRE demo prerequisites and prints the next steps for deploying the Azure relay-backed overlay.
 #
 # Usage:
-#   bash setup-sre-agent.sh -g <resource-group> -e <environment-name> -o <devops-org-url> -p <devops-project>
+#   bash setup-sre-agent.sh -g <resource-group> -e <environment-name>
 
 set -euo pipefail
 
@@ -35,9 +35,6 @@ log_error() {
 # Parse arguments
 RESOURCE_GROUP=""
 ENVIRONMENT_NAME=""
-DEVOPS_ORG_URL=""
-DEVOPS_PROJECT="SRE-Demo"
-LOCATION="westus3"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -49,26 +46,11 @@ while [[ $# -gt 0 ]]; do
             ENVIRONMENT_NAME="$2"
             shift 2
             ;;
-        -o|--devops-org-url)
-            DEVOPS_ORG_URL="$2"
-            shift 2
-            ;;
-        -p|--devops-project)
-            DEVOPS_PROJECT="$2"
-            shift 2
-            ;;
-        -l|--location)
-            LOCATION="$2"
-            shift 2
-            ;;
         -h|--help)
             echo "Usage: setup-sre-agent.sh [OPTIONS]"
             echo "Options:"
             echo "  -g, --resource-group <name>      Azure Resource Group (required)"
             echo "  -e, --environment-name <name>    Environment name (required)"
-            echo "  -o, --devops-org-url <url>       Azure DevOps Org URL (required)"
-            echo "  -p, --devops-project <project>   Azure DevOps Project (default: SRE-Demo)"
-            echo "  -l, --location <location>        Azure region (default: westus3)"
             echo "  -h, --help                       Show this help message"
             exit 0
             ;;
@@ -80,7 +62,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate required arguments
-if [[ -z "$RESOURCE_GROUP" || -z "$ENVIRONMENT_NAME" || -z "$DEVOPS_ORG_URL" ]]; then
+if [[ -z "$RESOURCE_GROUP" || -z "$ENVIRONMENT_NAME" ]]; then
     log_error "Missing required arguments"
     echo "Run: bash setup-sre-agent.sh --help"
     exit 1
@@ -89,8 +71,6 @@ fi
 log_info "Azure SRE Agent Demo Setup"
 log_info "Resource Group: $RESOURCE_GROUP"
 log_info "Environment: $ENVIRONMENT_NAME"
-log_info "DevOps Org: $DEVOPS_ORG_URL"
-log_info "DevOps Project: $DEVOPS_PROJECT"
 echo ""
 
 # Check prerequisites
@@ -154,9 +134,16 @@ log_success "Setup validation complete!"
 echo ""
 echo "Next steps:"
 echo "1. Create or identify your Logic App / Azure Function relay for incident routing"
+echo "   Retrieve the full HTTP trigger callback URL (not the workflow overview URL) before deploying the SRE overlay:"
+echo ""
+echo "   LOGIC_APP_RESOURCE_ID=\"/subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.Logic/workflows/<logic-app-name>\""
+echo "   LOGIC_APP_TRIGGER_NAME=\"When_an_HTTP_request_is_received\""
+echo "   LOGIC_APP_CALLBACK_URL=\$(az rest --method post --url \"https://management.azure.com\${LOGIC_APP_RESOURCE_ID}/triggers/\${LOGIC_APP_TRIGGER_NAME}/listCallbackUrl?api-version=2019-05-01\" --query value --output tsv)"
+echo ""
 echo "2. Deploy the SRE overlay with explicit parameters:"
 echo ""
-echo "   az deployment group create --resource-group $RESOURCE_GROUP --template-file infra/main.bicep --parameters enableSreDemo=true incidentRelayResourceId=<relay-resource-id> incidentRelayCallbackUrl=<relay-callback-url> responseTimeThresholdMs=500 failedRequestCountThreshold=5"
+echo "   az deployment group create --resource-group $RESOURCE_GROUP --template-file infra/main.bicep --parameters enableSreDemo=true incidentRelayResourceId=<relay-resource-id> incidentRelayCallbackUrl=\$LOGIC_APP_CALLBACK_URL responseTimeThresholdMs=500 failedRequestCountThreshold=5"
+echo "   The callback URL must contain '/triggers/' and 'sig=' or Azure Monitor will not invoke the Logic App."
 echo ""
 echo "3. Verify setup with:"
 echo "   bash verify-sre-setup.sh -g $RESOURCE_GROUP -e $ENVIRONMENT_NAME"

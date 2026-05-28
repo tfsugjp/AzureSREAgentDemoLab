@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
     Azure SRE Agent Demo Setup Script (PowerShell 7)
-    Configures SRE resources including alerts, action groups, and Azure DevOps integration.
+    Validates SRE demo prerequisites and prints the next steps for deploying the Azure relay-backed overlay.
 
 .PARAMETER ResourceGroup
     Azure Resource Group name (required)
@@ -9,17 +9,8 @@
 .PARAMETER EnvironmentName
     Environment name (required)
 
-.PARAMETER DevOpsOrgUrl
-    Azure DevOps Organization URL (required)
-
-.PARAMETER DevOpsProject
-    Azure DevOps Project name (default: SRE-Demo)
-
-.PARAMETER Location
-    Azure region (default: westus3)
-
 .EXAMPLE
-    .\setup-sre-agent.ps1 -ResourceGroup "rg-globalazdemo" -EnvironmentName "sre-demo" -DevOpsOrgUrl "https://dev.azure.com/myorg"
+    .\setup-sre-agent.ps1 -ResourceGroup "rg-globalazdemo" -EnvironmentName "sre-demo"
 #>
 
 param(
@@ -27,16 +18,7 @@ param(
     [string]$ResourceGroup,
 
     [Parameter(Mandatory=$true)]
-    [string]$EnvironmentName,
-
-    [Parameter(Mandatory=$true)]
-    [string]$DevOpsOrgUrl,
-
-    [Parameter(Mandatory=$false)]
-    [string]$DevOpsProject = "SRE-Demo",
-
-    [Parameter(Mandatory=$false)]
-    [string]$Location = "westus3"
+    [string]$EnvironmentName
 )
 
 $ErrorActionPreference = "Stop"
@@ -66,8 +48,6 @@ function Write-ErrorMessage {
 Write-Info "Azure SRE Agent Demo Setup"
 Write-Info "Resource Group: $ResourceGroup"
 Write-Info "Environment: $EnvironmentName"
-Write-Info "DevOps Org: $DevOpsOrgUrl"
-Write-Info "DevOps Project: $DevOpsProject"
 Write-Host ""
 
 # Check prerequisites
@@ -151,9 +131,16 @@ Write-Success "Setup validation complete!"
 Write-Host ""
 Write-Host "Next steps:"
 Write-Host "1. Create or identify your Logic App / Azure Function relay for incident routing"
+Write-Host "   Retrieve the full HTTP trigger callback URL (not the workflow overview URL) before deploying the SRE overlay:"
+Write-Host ""
+Write-Host "   `$logicAppResourceId = '/subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.Logic/workflows/<logic-app-name>'"
+Write-Host "   `$logicAppTriggerName = 'When_an_HTTP_request_is_received'"
+Write-Host "   `$logicAppCallbackUrl = az rest --method post --url \"https://management.azure.com`$logicAppResourceId/triggers/`$logicAppTriggerName/listCallbackUrl?api-version=2019-05-01\" --query value --output tsv"
+Write-Host ""
 Write-Host "2. Deploy the SRE overlay with explicit parameters:"
 Write-Host ""
-Write-Host "   az deployment group create --resource-group $ResourceGroup --template-file infra/main.bicep --parameters enableSreDemo=true incidentRelayResourceId=<relay-resource-id> incidentRelayCallbackUrl=<relay-callback-url> responseTimeThresholdMs=500 failedRequestCountThreshold=5"
+Write-Host "   az deployment group create --resource-group $ResourceGroup --template-file infra/main.bicep --parameters enableSreDemo=true incidentRelayResourceId=<relay-resource-id> incidentRelayCallbackUrl=`$logicAppCallbackUrl responseTimeThresholdMs=500 failedRequestCountThreshold=5"
+Write-Host "   The callback URL must contain '/triggers/' and 'sig=' or Azure Monitor will not invoke the Logic App."
 Write-Host ""
 Write-Host "3. Verify setup with:"
 Write-Host "   .\verify-sre-setup.ps1 -ResourceGroup $ResourceGroup -EnvironmentName $EnvironmentName"

@@ -1,6 +1,6 @@
 # Azure SRE Agent Demo Setup Guide
 
-This guide walks you through setting up the Azure SRE Agent integration with the GlobalAzureDemo2026 application for incident detection and incident routing to Azure DevOps, GitHub, or both.
+This guide walks you through setting up the Azure SRE Agent integration with the GlobalAzureDemo2026 application for incident detection and relay-backed incident routing to Azure DevOps, GitHub, or both.
 
 ## Prerequisites
 
@@ -141,8 +141,40 @@ Before applying the SRE demo overlay, collect:
 
 - the same `environmentName`, `entraTenantId`, `entraClientId`, and `entraAudience` values used for the base deployment
 - the **Logic App resource ID** or equivalent Azure relay resource ID
-- the **Logic App callback URL** from the HTTP trigger
+- the **full Logic App callback URL** from the HTTP trigger
 - the thresholds you want for latency and failed request count
+
+Use the **trigger callback URL**, not the Logic App overview URL or access endpoint. The value passed to `incidentRelayCallbackUrl` must include the trigger path and signature, for example:
+
+```text
+https://.../workflows/.../triggers/When_an_HTTP_request_is_received/paths/invoke?...&sig=...
+```
+
+If the URL does not contain `/triggers/` and `sig=`, Azure Monitor can show a Logic App receiver in the Action Group while never invoking the workflow.
+
+**Bash:**
+```bash
+export LOGIC_APP_RESOURCE_ID="/subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.Logic/workflows/<logic-app-name>"
+export LOGIC_APP_TRIGGER_NAME="When_an_HTTP_request_is_received"
+
+export LOGIC_APP_CALLBACK_URL=$(az rest \
+  --method post \
+  --url "https://management.azure.com${LOGIC_APP_RESOURCE_ID}/triggers/${LOGIC_APP_TRIGGER_NAME}/listCallbackUrl?api-version=2019-05-01" \
+  --query value \
+  --output tsv)
+```
+
+**PowerShell 7:**
+```powershell
+$logicAppResourceId = "/subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.Logic/workflows/<logic-app-name>"
+$logicAppTriggerName = "When_an_HTTP_request_is_received"
+
+$logicAppCallbackUrl = az rest `
+  --method post `
+  --url "https://management.azure.com$logicAppResourceId/triggers/$logicAppTriggerName/listCallbackUrl?api-version=2019-05-01" `
+  --query value `
+  --output tsv
+```
 
 ### 2.2 Deploy Infrastructure
 
@@ -158,8 +190,8 @@ az deployment group create \
     entraClientId=<your-client-id> \
     entraAudience=<your-audience> \
     enableSreDemo=true \
-    incidentRelayResourceId=<logic-app-resource-id> \
-    incidentRelayCallbackUrl=<logic-app-callback-url> \
+    incidentRelayResourceId=$LOGIC_APP_RESOURCE_ID \
+    incidentRelayCallbackUrl=$LOGIC_APP_CALLBACK_URL \
     responseTimeThresholdMs=500 \
     failedRequestCountThreshold=5
 ```
@@ -177,8 +209,8 @@ az deployment group create `
     entraClientId=<your-client-id> `
     entraAudience=<your-audience> `
     enableSreDemo=true `
-    incidentRelayResourceId=<logic-app-resource-id> `
-    incidentRelayCallbackUrl=<logic-app-callback-url> `
+    incidentRelayResourceId=$logicAppResourceId `
+    incidentRelayCallbackUrl=$logicAppCallbackUrl `
     responseTimeThresholdMs=500 `
     failedRequestCountThreshold=5
 ```
@@ -189,7 +221,7 @@ If you already deployed the base stack with `azd up`, this overlay deployment ca
 
 ## Step 3: Configure GitHub Connector
 
-The SRE Agent uses GitHub connectors to read repository context and, if you choose the GitHub route, create or update issues.
+The SRE Agent uses GitHub connectors to read repository context and, if you choose the GitHub route, read or update issues that were created by your Azure relay.
 
 ### 3.1 Create GitHub Personal Access Token (PAT)
 
@@ -242,7 +274,7 @@ Use this section when your incident workflow includes Azure DevOps work items.
 
 ### 4.4 Register Azure DevOps in SRE Agent
 
-If the SRE Agent should read or comment on Azure DevOps work items, register the Azure DevOps connector in the agent as well.
+If the SRE Agent should read or comment on Azure DevOps work items created by the relay, register the Azure DevOps connector in the agent as well.
 
 Typical configuration:
 

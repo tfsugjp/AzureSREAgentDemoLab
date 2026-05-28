@@ -16,7 +16,7 @@ param containerAppsEnvironmentId string
 @description('Optional Logic App resource ID that receives Azure Monitor incidents.')
 param incidentRelayResourceId string = ''
 
-@description('Optional Logic App callback URL used by the Action Group receiver.')
+@description('Optional Logic App callback URL used by the Action Group receiver. Pass the full trigger invoke URL returned by listCallbackUrl, not the workflow overview URL.')
 @secure()
 param incidentRelayCallbackUrl string = ''
 
