@@ -1094,13 +1094,10 @@ This repository includes a **complete, executable 20-minute demo** showing how t
    ```bash
    az deployment group create \
      --resource-group <resource-group> \
-     --template-file infra/main.bicep \
+     --template-file infra/sre-overlay.bicep \
      --parameters \
        environmentName=<environment-name> \
-       entraTenantId=<tenant-id> \
-       entraClientId=<client-id> \
-       entraAudience=<audience> \
-       enableSreDemo=true \
+       location=<base-resource-location> \
        incidentRelayResourceId=<logic-app-resource-id> \
        incidentRelayCallbackUrl=<logic-app-callback-url> \
        responseTimeThresholdMs=500 \
@@ -1111,13 +1108,10 @@ This repository includes a **complete, executable 20-minute demo** showing how t
    ```powershell
    az deployment group create `
      --resource-group <resource-group> `
-     --template-file infra/main.bicep `
+     --template-file infra/sre-overlay.bicep `
      --parameters `
        environmentName=<environment-name> `
-       entraTenantId=<tenant-id> `
-       entraClientId=<client-id> `
-       entraAudience=<audience> `
-       enableSreDemo=true `
+       location=<base-resource-location> `
        incidentRelayResourceId=<logic-app-resource-id> `
        incidentRelayCallbackUrl=<logic-app-callback-url> `
        responseTimeThresholdMs=500 `
@@ -1125,6 +1119,8 @@ This repository includes a **complete, executable 20-minute demo** showing how t
    ```
 
    `incidentRelayCallbackUrl` must be the full HTTP trigger callback URL returned by `listCallbackUrl`, such as `https://.../triggers/.../paths/invoke?...&sig=...`. Do not use the Logic App overview URL.
+
+   > **注意**: SRE リソースだけを更新する場合は `infra/sre-overlay.bicep` を使ってください。`azd deploy` 後に `infra/main.bicep` を再実行すると、Container Apps がプロビジョニング用サンプル image (`mcr.microsoft.com/dotnet/samples:aspnetapp`) に戻る可能性があります。サンプル image が表示される場合は `azd deploy` を実行してサービス image を再反映してください。
 
 2. **Run the Demo** — Complete incident cycle (20 min)
    - See: [SRE Scenario - 20 Minute Demo](./docs/sre-scenario-20min.md)

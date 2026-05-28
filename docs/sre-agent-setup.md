@@ -176,20 +176,22 @@ $logicAppCallbackUrl = az rest `
   --output tsv
 ```
 
-### 2.2 Deploy Infrastructure
+### 2.2 Deploy SRE Overlay Resources
+
+Deploy SRE resources with the dedicated overlay template. The overlay references the existing Log Analytics workspace, Application Insights component, and Container Apps environment without updating the Container Apps revisions or images.
+
+> [!WARNING]
+> Do not re-run `infra/main.bicep` just to update SRE resources after `azd deploy`. The base template intentionally uses `mcr.microsoft.com/dotnet/samples:aspnetapp` as the provisioning placeholder image, so reapplying it can reset Catalog, Order, and Notification Container Apps back to the sample app.
 
 **Bash:**
 ```bash
 az deployment group create \
   --name "globalazdemo-sre-$(date +%s)" \
   --resource-group $RESOURCE_GROUP \
-  --template-file infra/main.bicep \
+  --template-file infra/sre-overlay.bicep \
   --parameters \
     environmentName=$ENVIRONMENT_NAME \
-    entraTenantId=<your-tenant-id> \
-    entraClientId=<your-client-id> \
-    entraAudience=<your-audience> \
-    enableSreDemo=true \
+    location=$LOCATION \
     incidentRelayResourceId=$LOGIC_APP_RESOURCE_ID \
     incidentRelayCallbackUrl=$LOGIC_APP_CALLBACK_URL \
     responseTimeThresholdMs=500 \
@@ -202,20 +204,17 @@ $deploymentName = "globalazdemo-sre-$(Get-Date -Format 'yyyyMMddHHmmss')"
 az deployment group create `
   --name $deploymentName `
   --resource-group $env:RESOURCE_GROUP `
-  --template-file infra/main.bicep `
+  --template-file infra/sre-overlay.bicep `
   --parameters `
     environmentName=$env:ENVIRONMENT_NAME `
-    entraTenantId=<your-tenant-id> `
-    entraClientId=<your-client-id> `
-    entraAudience=<your-audience> `
-    enableSreDemo=true `
+    location=$env:LOCATION `
     incidentRelayResourceId=$logicAppResourceId `
     incidentRelayCallbackUrl=$logicAppCallbackUrl `
     responseTimeThresholdMs=500 `
     failedRequestCountThreshold=5
 ```
 
-If you already deployed the base stack with `azd up`, this overlay deployment can be run afterward against the same resource group.
+If Container Apps still show `mcr.microsoft.com/dotnet/samples:aspnetapp` after setup, run `azd deploy` from the repository root to push the Catalog, Order, and Notification service images.
 
 ---
 

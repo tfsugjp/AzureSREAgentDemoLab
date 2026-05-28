@@ -100,7 +100,7 @@ ALERT_COUNT=$(az monitor metrics alert list \
     --output tsv 2>/dev/null || echo "0")
 
 if [[ "$ALERT_COUNT" -eq 0 ]]; then
-    log_warn "No metric alerts found. Deploy with enableSreDemo=true"
+    log_warn "No metric alerts found. Deploy the SRE overlay with infra/sre-overlay.bicep"
 else
     log_success "Found $ALERT_COUNT metric alert(s)"
     az monitor metrics alert list \
@@ -117,7 +117,7 @@ ACTION_GROUP=$(az monitor action-group list \
     --output tsv 2>/dev/null | head -1 || echo "")
 
 if [[ -z "$ACTION_GROUP" ]]; then
-    log_warn "No SRE Action Group found. Deploy with enableSreDemo=true"
+    log_warn "No SRE Action Group found. Deploy the SRE overlay with infra/sre-overlay.bicep"
     record_failure
 else
     log_success "Action Group: $ACTION_GROUP"
@@ -165,23 +165,31 @@ fi
 
 # Check 5: Container Apps
 log_info "Checking Container Apps..."
+SAMPLE_IMAGE_URI="mcr.microsoft.com/dotnet/samples:aspnetapp"
 CONTAINER_APPS=$(az containerapp list \
     --resource-group "$RESOURCE_GROUP" \
-    --query "[].{name: name, provisioning: properties.provisioningState}" \
+    --query "[].{name: name, provisioning: properties.provisioningState, image: properties.template.containers[0].image}" \
     --output json)
 
 if [[ $(echo "$CONTAINER_APPS" | jq 'length') -eq 0 ]]; then
     log_error "No Container Apps found"
     record_failure
 else
-    while IFS= read -r line; do
-        if echo "$line" | grep -q "Succeeded"; then
-            log_success "$line"
+    while IFS=$'\t' read -r app_name provisioning image; do
+        if [[ "$provisioning" == "Succeeded" ]]; then
+            log_success "$app_name: Provisioning State = Succeeded"
         else
-            log_warn "$line"
+            log_warn "$app_name: Provisioning State = $provisioning"
             record_failure
         fi
-    done < <(echo "$CONTAINER_APPS" | jq -r '.[] | "\(.name): \(.provisioning)"')
+
+        if [[ "$image" == "$SAMPLE_IMAGE_URI" ]]; then
+            log_error "$app_name: Still running provisioning placeholder image ($SAMPLE_IMAGE_URI). Run 'azd deploy' to deploy repository service images."
+            record_failure
+        else
+            log_success "$app_name: Image = $image"
+        fi
+    done < <(echo "$CONTAINER_APPS" | jq -r '.[] | [.name, .provisioning, .image] | @tsv')
 fi
 
 # Check 6: Test query on Log Analytics
