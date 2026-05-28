@@ -166,7 +166,7 @@ resource logQueryAlert 'Microsoft.Insights/scheduledQueryRules@2023-12-01' = if 
     criteria: {
       allOf: [
         {
-          query: 'AppEvents | where TimeGenerated > ago(15m) | where Name contains "error" or Name contains "failure" | summarize Count = count() by Name | where Count > 5'
+          query: 'AppEvents | where TimeGenerated > ago(15m) | where Name contains "error" or Name contains "failure" | summarize Count = count() by bin(TimeGenerated, 5m), Name | where Count > 5'
           timeAggregation: 'Count'
           dimensions: []
           operator: 'GreaterThan'
