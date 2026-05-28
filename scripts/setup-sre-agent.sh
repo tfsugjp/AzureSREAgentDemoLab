@@ -87,7 +87,8 @@ if ! az group show --name "$RESOURCE_GROUP" &> /dev/null; then
     log_error "Resource Group '$RESOURCE_GROUP' not found"
     exit 1
 fi
-log_success "Resource Group exists"
+RESOURCE_GROUP_LOCATION=$(az group show --name "$RESOURCE_GROUP" --query location --output tsv)
+log_success "Resource Group exists ($RESOURCE_GROUP_LOCATION)"
 
 # Check if Log Analytics workspace exists
 LOG_ANALYTICS_WS=$(az monitor log-analytics workspace list \
@@ -125,6 +126,22 @@ if [[ -z "$CONTAINER_APPS_ENV" ]]; then
 fi
 log_success "Container Apps Environment: $CONTAINER_APPS_ENV"
 
+# Check whether Container Apps are still running the provisioning placeholder image.
+SAMPLE_IMAGE_URI="mcr.microsoft.com/dotnet/samples:aspnetapp"
+SAMPLE_CONTAINER_APPS=$(az containerapp list \
+    --resource-group "$RESOURCE_GROUP" \
+    --query "[?properties.template.containers[0].image=='${SAMPLE_IMAGE_URI}'].[name, properties.template.containers[0].image]" \
+    --output tsv 2>/dev/null || echo "")
+
+if [[ -n "$SAMPLE_CONTAINER_APPS" ]]; then
+    echo ""
+    log_warn "Some Container Apps are still running the provisioning placeholder image."
+    while IFS=$'\t' read -r app_name app_image; do
+        log_warn "$app_name: $app_image"
+    done <<< "$SAMPLE_CONTAINER_APPS"
+    echo "Run 'azd deploy' after the SRE overlay to deploy the repository service images."
+fi
+
 echo ""
 log_info "All prerequisites met. Ready for SRE resource deployment."
 echo ""
@@ -142,10 +159,13 @@ echo "   LOGIC_APP_CALLBACK_URL=\$(az rest --method post --url \"https://managem
 echo ""
 echo "2. Deploy the SRE overlay with explicit parameters:"
 echo ""
-echo "   az deployment group create --resource-group $RESOURCE_GROUP --template-file infra/main.bicep --parameters enableSreDemo=true incidentRelayResourceId=<relay-resource-id> incidentRelayCallbackUrl=\$LOGIC_APP_CALLBACK_URL responseTimeThresholdMs=500 failedRequestCountThreshold=5"
+echo "   az deployment group create --resource-group $RESOURCE_GROUP --template-file infra/sre-overlay.bicep --parameters \"environmentName=$ENVIRONMENT_NAME\" \"location=$RESOURCE_GROUP_LOCATION\" \"incidentRelayResourceId=<relay-resource-id>\" \"incidentRelayCallbackUrl=\$LOGIC_APP_CALLBACK_URL\" \"responseTimeThresholdMs=500\" \"failedRequestCountThreshold=5\""
+echo "   Use infra/sre-overlay.bicep for SRE-only updates. Do not re-run infra/main.bicep just to update SRE resources, because it can reset Container Apps to the provisioning placeholder image."
 echo "   The callback URL must contain '/triggers/' and 'sig=' or Azure Monitor will not invoke the Logic App."
 echo ""
-echo "3. Verify setup with:"
+echo "3. If any app still uses mcr.microsoft.com/dotnet/samples:aspnetapp, deploy service images with: azd deploy"
+echo ""
+echo "4. Verify setup with:"
 echo "   bash verify-sre-setup.sh -g $RESOURCE_GROUP -e $ENVIRONMENT_NAME"
 echo ""
 echo "For more details, see: docs/sre-agent-setup.md"

@@ -95,7 +95,7 @@ $alertCount = az monitor metrics alert list `
     --output tsv 2>$null
 
 if ($alertCount -eq 0) {
-    Write-Warn "No metric alerts found. Deploy with enableSreDemo=true"
+    Write-Warn "No metric alerts found. Deploy the SRE overlay with infra/sre-overlay.bicep"
 } else {
     Write-Success "Found $alertCount metric alert(s)"
     $alertData = az monitor metrics alert list `
@@ -117,7 +117,7 @@ $actionGroup = az monitor action-group list `
     --output tsv 2>$null | Select-Object -First 1
 
 if ([string]::IsNullOrWhiteSpace($actionGroup)) {
-    Write-Warn "No SRE Action Group found. Deploy with enableSreDemo=true"
+    Write-Warn "No SRE Action Group found. Deploy the SRE overlay with infra/sre-overlay.bicep"
     Add-Failure
 } else {
     Write-Success "Action Group: $actionGroup"
@@ -165,24 +165,32 @@ if ([string]::IsNullOrWhiteSpace($actionGroup)) {
 
 # Check 5: Container Apps
 Write-Info "Checking Container Apps..."
+$sampleImageUri = "mcr.microsoft.com/dotnet/samples:aspnetapp"
 $containerAppsJson = az containerapp list `
     --resource-group $ResourceGroup `
-    --query "[].[name, properties.provisioningState]" `
+    --query "[].{name:name,provisioning:properties.provisioningState,image:properties.template.containers[0].image}" `
     --output json
 
 try {
-    $containerApps = $containerAppsJson | ConvertFrom-Json
+    $containerApps = @($containerAppsJson | ConvertFrom-Json)
     
     if ($null -eq $containerApps -or $containerApps.Count -eq 0) {
         Write-ErrorMessage "No Container Apps found"
         Add-Failure
     } else {
         $containerApps | ForEach-Object {
-            if ($_[1] -eq "Succeeded") {
-                Write-Success "$($_[0]): Provisioning State = Succeeded"
+            if ($_.provisioning -eq "Succeeded") {
+                Write-Success "$($_.name): Provisioning State = Succeeded"
             } else {
-                Write-Warn "$($_[0]): Provisioning State = $($_[1])"
+                Write-Warn "$($_.name): Provisioning State = $($_.provisioning)"
                 Add-Failure
+            }
+
+            if ($_.image -eq $sampleImageUri) {
+                Write-ErrorMessage "$($_.name): Still running provisioning placeholder image ($sampleImageUri). Run 'azd deploy' to deploy repository service images."
+                Add-Failure
+            } else {
+                Write-Success "$($_.name): Image = $($_.image)"
             }
         }
     }

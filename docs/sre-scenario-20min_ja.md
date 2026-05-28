@@ -128,16 +128,62 @@ ContainerAppSystemLogs
 
 ### 2.1 アラート ルール ステータスを確認
 
+インフラで作成したアラート ルールがメトリクスを評価し始めているかを確認します。
+
+**Bash:**
+
 ```bash
 ALERT_RULE_NAME=$(az monitor metrics alert list \
   --resource-group $RESOURCE_GROUP \
   --query "[?contains(name, 'high-latency')].name | [0]" \
   --output tsv)
 
+SUBSCRIPTION_ID=$(az account show --query id --output tsv)
+
+# アラート ルール一覧
 az monitor metrics alert list \
   --resource-group $RESOURCE_GROUP \
   --query "[?contains(name, 'high-latency')]" \
   --output table
+
+# Alerts Management から直近のアラート インスタンスを確認
+az rest \
+  --method get \
+  --url "https://management.azure.com/subscriptions/$SUBSCRIPTION_ID/providers/Microsoft.AlertsManagement/alerts?api-version=2019-03-01&\$filter=targetResourceGroup%20eq%20%27${RESOURCE_GROUP}%27" \
+  --output json | jq '[.value[] | select(.properties.essentials.alertRule | endswith("/" + $ruleName))][0:5]' --arg ruleName "$ALERT_RULE_NAME"
+```
+
+**PowerShell 7:**
+
+```powershell
+$alertRuleName = az monitor metrics alert list `
+  --resource-group $env:RESOURCE_GROUP `
+  --query "[?contains(name, 'high-latency')].name | [0]" `
+  --output tsv
+
+$subscriptionId = az account show --query id --output tsv
+$alertsUrl = "https://management.azure.com/subscriptions/$subscriptionId/providers/Microsoft.AlertsManagement/alerts?api-version=2019-03-01&`$filter=targetResourceGroup%20eq%20%27$($env:RESOURCE_GROUP)%27"
+
+# アラート ルール一覧
+az monitor metrics alert list `
+  --resource-group $env:RESOURCE_GROUP `
+  --query "[?contains(name, 'high-latency')]" `
+  --output table
+
+# Alerts Management から直近のアラート インスタンスを確認
+$alerts = az rest `
+  --method get `
+  --url $alertsUrl `
+  --output json | ConvertFrom-Json
+
+$alerts.value |
+  Where-Object { $_.properties.essentials.alertRule -like "*/$alertRuleName" } |
+  Select-Object -First 5 `
+    name,
+    @{Name='MonitorCondition';Expression={$_.properties.essentials.monitorCondition}},
+    @{Name='AlertState';Expression={$_.properties.essentials.alertState}},
+    @{Name='StartDateTime';Expression={$_.properties.essentials.startDateTime}},
+    @{Name='Severity';Expression={$_.properties.essentials.severity}}
 ```
 
 **期待される出力**:
