@@ -1,11 +1,10 @@
 # AzureSREAgentDemoLab - SRE Training Microservices
 
-> 日本語版は [README_ja.md](./README_ja.md) を参照してください。
+> For the English version, see [README.md](./README.md).
 
-A microservices application used for validating and teaching the Azure SRE Agent and the
-Azure Copilot Observability Agent.
+Azure SRE Agent および Azure Copilot Observability Agent の検証・教材用マイクロサービスアプリケーション。
 
-## Architecture
+## アーキテクチャ
 
 ```mermaid
 graph TB
@@ -35,78 +34,75 @@ graph TB
     NS -.-> EntraID
 ```
 
-> **Note**: The community edition of Ingress NGINX was retired in March 2026. This project uses
-> [Application Gateway for Containers (AGC)](https://learn.microsoft.com/azure/application-gateway/for-containers/overview)
-> together with the Gateway API.
+> **Note**: Ingress NGINX は 2026 年 3 月にコミュニティ版が退役しました。本プロジェクトでは [Application Gateway for Containers (AGC)](https://learn.microsoft.com/azure/application-gateway/for-containers/overview) と Gateway API を使用しています。
 
-## Services
+## サービス構成
 
-| Service | Port | Endpoints | Description |
-|---------|------|-----------|-------------|
-| CatalogService | 5001 | 10 | Product catalog, categories, inventory management |
-| OrderService | 5002 | 8 | Order management, status tracking |
-| NotificationService | 5003 | 6 | Notification delivery, read-state management |
+| サービス | ポート | エンドポイント数 | 説明 |
+|---------|-------|----------------|------|
+| CatalogService | 5001 | 10 | 商品カタログ、カテゴリ、在庫管理 |
+| OrderService | 5002 | 8 | 注文管理、ステータス追跡 |
+| NotificationService | 5003 | 6 | 通知配信、既読管理 |
 
-## Technology stack
+## 技術スタック
 
 - **Runtime**: .NET 10
 - **Framework**: ASP.NET Core Minimal APIs
-- **Authentication**: Microsoft Entra ID (JWT bearer authentication)
-- **Data store**: Azure Cosmos DB (NoSQL API)
-- **Telemetry**: OpenTelemetry (traces + metrics + logs)
-- **Logging**: Serilog (structured logging)
-- **Containers**: Docker (multi-stage builds)
-- **Orchestration**: Kubernetes (AKS)
+- **認証**: Microsoft Entra ID (JWT ベアラー認証)
+- **データストア**: Azure Cosmos DB (NoSQL API)
+- **テレメトリ**: OpenTelemetry (トレース + メトリクス + ログ)
+- **ログ**: Serilog (構造化ログ)
+- **コンテナ**: Docker (マルチステージビルド)
+- **オーケストレーション**: Kubernetes (AKS)
 
-## API endpoints
+## API エンドポイント一覧
 
 ### CatalogService (`/api/products`, `/api/categories`, `/api/inventory`)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/products` | List products |
-| GET | `/api/products/{id}` | Get product details |
-| POST | `/api/products` | Create a product |
-| PUT | `/api/products/{id}` | Update a product |
-| DELETE | `/api/products/{id}` | Delete a product |
-| GET | `/api/products/search?q={query}` | Search products ⚠️ |
-| GET | `/api/categories` | List categories |
-| GET | `/api/categories/{id}` | Get category details |
-| GET | `/api/inventory/{productId}` | Check inventory |
-| PUT | `/api/inventory/{productId}` | Update inventory |
+| Method | Path | 説明 |
+|--------|------|------|
+| GET | `/api/products` | 商品一覧取得 |
+| GET | `/api/products/{id}` | 商品詳細取得 |
+| POST | `/api/products` | 商品登録 |
+| PUT | `/api/products/{id}` | 商品更新 |
+| DELETE | `/api/products/{id}` | 商品削除 |
+| GET | `/api/products/search?q={query}` | 商品検索 ⚠️ |
+| GET | `/api/categories` | カテゴリ一覧 |
+| GET | `/api/categories/{id}` | カテゴリ詳細 |
+| GET | `/api/inventory/{productId}` | 在庫確認 |
+| PUT | `/api/inventory/{productId}` | 在庫更新 |
 
 ### OrderService (`/api/orders`)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/orders` | List orders |
-| GET | `/api/orders/{id}` | Get order details |
-| POST | `/api/orders` | Create an order |
-| PUT | `/api/orders/{id}/status` | Update order status |
-| DELETE | `/api/orders/{id}` | Delete an order |
-| GET | `/api/orders/user/{userId}` | List orders by user |
-| POST | `/api/orders/{id}/cancel` | Cancel an order |
-| GET | `/api/orders/{id}/total` | Calculate order total |
+| Method | Path | 説明 |
+|--------|------|------|
+| GET | `/api/orders` | 注文一覧 |
+| GET | `/api/orders/{id}` | 注文詳細 |
+| POST | `/api/orders` | 注文作成 |
+| PUT | `/api/orders/{id}/status` | 注文ステータス更新 |
+| DELETE | `/api/orders/{id}` | 注文削除 |
+| GET | `/api/orders/user/{userId}` | ユーザー別注文 |
+| POST | `/api/orders/{id}/cancel` | 注文キャンセル |
+| GET | `/api/orders/{id}/total` | 注文合計計算 |
 
 ### NotificationService (`/api/notifications`)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/notifications` | List notifications |
-| GET | `/api/notifications/{id}` | Get notification details |
-| POST | `/api/notifications` | Create a notification |
-| PUT | `/api/notifications/{id}/read` | Mark as read |
-| GET | `/api/notifications/user/{userId}` | List notifications by user |
-| DELETE | `/api/notifications/{id}` | Delete a notification |
+| Method | Path | 説明 |
+|--------|------|------|
+| GET | `/api/notifications` | 通知一覧 |
+| GET | `/api/notifications/{id}` | 通知詳細 |
+| POST | `/api/notifications` | 通知作成 |
+| PUT | `/api/notifications/{id}/read` | 既読マーク |
+| GET | `/api/notifications/user/{userId}` | ユーザー別通知 |
+| DELETE | `/api/notifications/{id}` | 通知削除 |
 
-## Health check endpoints
+## ヘルスチェック エンドポイント
 
-Each service exposes a consistent set of health-check endpoints that correspond to the
-Kubernetes liveness and readiness probes.
+各サービスは、Kubernetes の Liveness / Readiness プローブに対応した一貫したヘルスチェック エンドポイントを公開しています。
 
-### `GET /health` — Liveness probe
+### `GET /health` — Liveness プローブ
 
-Checks only whether the process is alive. It does not check dependencies.
+プロセスが生存しているかどうかのみを確認します。依存関係はチェックしません。
 
 ```json
 {
@@ -115,14 +111,14 @@ Checks only whether the process is alive. It does not check dependencies.
 }
 ```
 
-### `GET /health/ready` — Readiness probe
+### `GET /health/ready` — Readiness プローブ
 
-Returns `Healthy` only when all of the following conditions are met.
+以下の条件がすべて満たされた場合のみ `Healthy` を返します。
 
-| Check | Description |
+| チェック | 説明 |
 |---|---|
-| `cosmosdb` | `CosmosClient.ReadAccountAsync()` succeeds |
-| `startup` | Cosmos DB initialization and seeding are complete |
+| `cosmosdb` | `CosmosClient.ReadAccountAsync()` が成功すること |
+| `startup` | Cosmos DB 初期化とシード投入が完了していること |
 
 ```json
 {
@@ -134,35 +130,33 @@ Returns `Healthy` only when all of the following conditions are met.
 }
 ```
 
-## Local development
+## ローカル開発
 
-### Prerequisites (before deploying to Azure)
+### Azure デプロイ前提条件
 
 - .NET 10 SDK
 - Docker Desktop
-- (Optional) Azure Cosmos DB Emulator
+- (オプション) Azure Cosmos DB Emulator
 
-### Start with docker-compose
+### docker-compose で起動
 
 ```bash
 docker compose up --build
 ```
 
-The services are accessible on the following ports:
+サービスは以下のポートでアクセスできます:
 - CatalogService: http://localhost:5001
 - OrderService: http://localhost:5002
 - NotificationService: http://localhost:5003
 - Cosmos DB Emulator: https://localhost:8081
 
-In development mode, authentication is skipped (`Authentication:DisableAuth=true`).
+開発モードでは認証がスキップされます (`Authentication:DisableAuth=true`)。
 
-> **Note**: In the docker-compose environment, `CosmosDb:AllowInsecureCertificate=true` is set.
-> This allows the self-signed certificate of the Linux Cosmos DB emulator. The connection mode
-> (Gateway) can be configured independently with `CosmosDb:ConnectionMode` (if unset and
-> `AllowInsecureCertificate=true`, Gateway is the default; otherwise Direct is the default).
-> **Never use this in production.**
+> **注意**: docker-compose 環境では `CosmosDb:AllowInsecureCertificate=true` が設定されています。
+> これは Linux Cosmos DB エミュレーターの自己署名証明書を許可するための設定です。接続モード（Gateway）はこの設定とは別に `CosmosDb:ConnectionMode` で構成できます（未設定かつ `AllowInsecureCertificate=true` の場合は Gateway、それ以外は Direct がデフォルトです）。
+> **本番環境では絶対に使用しないでください。**
 
-### Run individual services
+### 個別サービスの起動
 
 ```bash
 dotnet run --project src/CatalogService
@@ -170,18 +164,17 @@ dotnet run --project src/OrderService
 dotnet run --project src/NotificationService
 ```
 
-### Build
+### ビルド
 
 ```bash
 dotnet build AzureSREAgentDemoLab.slnx
 ```
 
-## Deploy with Azure Developer CLI + Bicep
+## Azure Developer CLI + Bicep デプロイ
 
-This repository includes an Azure Developer CLI (`azd`) + Bicep configuration that lets you
-**deploy repeatedly to multiple environments for training purposes**.
+このリポジトリには、**教育用途で複数環境へ繰り返しデプロイできる** Azure Developer CLI (`azd`) + Bicep 構成が含まれています。
 
-### Azure resources created
+### 生成される Azure リソース
 
 - Azure Container Apps Environment
 - Azure Container Apps x 3
@@ -194,41 +187,40 @@ This repository includes an Azure Developer CLI (`azd`) + Bicep configuration th
 - Log Analytics Workspace
 - Application Insights
 
-### Design principles
+### 設計方針
 
-- **Cost optimization first**
-  - Uses Container Apps instead of AKS
-  - Non-`prod` environments use `minReplicas = 0`
-  - ACR is `Basic`
-  - Cosmos DB is `serverless`
-- **No Private Endpoints**
-- **Default region is `westus3`**
-  - `westus3` is used as the IaC default
-  - Creating environments with `azd env new <env> -l westus3` is recommended
-- **Multi-environment support**
-  - Resource names are separated based on `AZURE_ENV_NAME`
-  - `dev` / `test` / `prod` / `workshop-a` and similar can run in parallel
+- **コスト最適化優先**
+  - AKS ではなく Container Apps を使用
+  - 非 `prod` 環境は `minReplicas = 0`
+  - ACR は `Basic`
+  - Cosmos DB は `serverless`
+- **Private Endpoint は未使用**
+- **既定リージョンは `westus3`**
+  - IaC 側の既定値として `westus3` を使用
+  - `azd env new <env> -l westus3` で環境作成することを推奨
+- **複数環境対応**
+  - `AZURE_ENV_NAME` ベースでリソース名を分離
+  - `dev` / `test` / `prod` / `workshop-a` などを並行運用可能
 
-### Prerequisites
+### 前提条件
 
 - Azure Developer CLI (`azd`)
 - Azure CLI (`az`)
 - Docker Desktop
 - .NET 10 SDK
-- Access to an Azure subscription
+- Azure サブスクリプションへのアクセス
 
-### Per-environment setup
+### 環境ごとのセットアップ
 
-`azd` creates a `.azure/<environment-name>/.env` file for each environment.
+`azd` は環境ごとに `.azure/<environment-name>/.env` を作成します。
 
-First, create the environment.
+まず環境を作成します。
 
 ```bash
 azd env new dev -l westus3
 ```
 
-Next, set the required values for the environment. `scripts/setup-entra-app.ps1` automates the
-Entra ID registration and the value configuration (see `docs/entra-app-setup.md` for details).
+次に、必須値を環境へ設定します。`scripts/setup-entra-app.ps1` を使用すると Entra ID 登録と値の設定が自動化されます (詳細は `docs/entra-app-setup.md` 参照)。
 
 ```bash
 azd env set ENTRA_TENANT_ID <your-tenant-id>
@@ -236,12 +228,9 @@ azd env set ENTRA_CLIENT_ID <your-client-id>
 azd env set ENTRA_AUDIENCE <identifier-uri-from-entra-registration>
 ```
 
-> For `ENTRA_AUDIENCE`, specify the App ID URI (identifier URI) of the Entra ID app registration.
-> If you used `scripts/setup-entra-app.ps1` it has the form `api://<your-client-id>`; if you used
-> the Bicep template it has the form `api://<sanitized-display-name>`. The JWT `aud` validation
-> must match this value.
+> `ENTRA_AUDIENCE` には、Entra ID アプリ登録の App ID URI (識別子 URI) を指定します。`scripts/setup-entra-app.ps1` を使った場合は `api://<your-client-id>` 形式、Bicep テンプレートを使った場合は `api://<sanitized-display-name>` 形式になります。JWT の `aud` 検証はこの値と一致する必要があります。
 
-You can set additional values as needed.
+必要に応じて追加設定も可能です。
 
 ```bash
 azd env set ENVIRONMENT_TYPE dev
@@ -249,33 +238,31 @@ azd env set DISABLE_AUTH false
 azd env set OPEN_TELEMETRY_ENDPOINT <optional-otlp-endpoint>
 ```
 
-> Reference: What `azd` actually reads is `.azure/<environment-name>/.env`. Keep a note of the
-> values you need.
+> 参考: 実際に `azd` が読むのは `.azure/<environment-name>/.env` です。必要な値は任意のメモに控えて管理してください。
 
-### Pre-deployment validation
+### デプロイ前の確認
 
-The following have been validated locally:
+ローカル検証として以下は確認済みです。
 
-- `infra/main.bicep`: no diagnostic errors
-- `infra/modules/container-app.bicep`: no diagnostic errors
-- `dotnet build AzureSREAgentDemoLab.slnx`: succeeds
+- `infra/main.bicep`: 診断エラーなし
+- `infra/modules/container-app.bicep`: 診断エラーなし
+- `dotnet build AzureSREAgentDemoLab.slnx`: 成功
 
-However, validating against Azure requires an `azd` environment **configured with real Entra ID
-values**.
+ただし、Azure 側の事前確認には**実環境の Entra ID 値を設定した `azd` 環境**が必要です。
 
-### Deployment flow
+### デプロイの流れ
 
-1. Create the environment
-2. Apply the required `azd env set` values
-3. Sign in to Azure
-4. Run the deployment
+1. 環境を作成
+2. 必須の `azd env set` を投入
+3. Azure にサインイン
+4. デプロイを実行
 
 ```bash
 az login
 azd up
 ```
 
-### Example: adding more environments
+### 環境を増やす例
 
 ```bash
 azd env new test -l westus3
@@ -283,32 +270,31 @@ azd env new prod -l westus3
 azd env new workshop-a -l westus3
 ```
 
-Because `.azure/<environment-name>/.env` is separated per environment, this works well for
-parallel validation in training scenarios.
+各環境ごとに `.azure/<environment-name>/.env` が分離されるため、教育用途の並行検証に向いています。
 
-### Key files
+### 主要ファイル
 
 - `azure.yaml`
-  - `azd` service definitions
+  - `azd` のサービス定義
 - `infra/main.bicep`
-  - Shared Azure resources + deployment of each service
+  - 共有 Azure リソース + 各サービスのデプロイ
 - `infra/modules/container-app.bicep`
-  - Common Container App module for each API service
+  - 各 API サービス用の共通 Container App モジュール
 - `infra/main.parameters.json`
-  - Passes `azd` environment variables to Bicep parameters
+  - `azd` 環境変数から Bicep パラメータへ受け渡し
 
-## AKS deployment
+## AKS デプロイ
 
-### 1. Provision Azure resources (Bicep)
+### 1. Azure リソースの準備 (Bicep)
 
-Provisions AKS, Application Gateway for Containers, VNet, Cosmos DB, ACR, and more in one go.
+AKS、Application Gateway for Containers、VNet、Cosmos DB、ACR などを一括でプロビジョニングします。
 
-Bash:
+Bash の場合:
 ```bash
-# Create the resource group
+# リソースグループを作成
 az group create --name rg-azure-sre-agent-demo-lab --location westus3
 
-# Deploy the infrastructure with Bicep
+# Bicep でインフラをデプロイ
 az deployment group create \
   --name main-aks \
   --resource-group rg-azure-sre-agent-demo-lab \
@@ -320,12 +306,12 @@ az deployment group create \
     entraAudience=<YOUR_AUDIENCE>
 ```
 
-PowerShell:
+PowerShell の場合:
 ```powershell
-# Create the resource group
+# リソースグループを作成
 az group create --name rg-azure-sre-agent-demo-lab --location westus3
 
-# Deploy the infrastructure with Bicep
+# Bicep でインフラをデプロイ
 az deployment group create `
   --name main-aks `
   --resource-group rg-azure-sre-agent-demo-lab `
@@ -337,44 +323,44 @@ az deployment group create `
     entraAudience=<YOUR_AUDIENCE>
 ```
 
-After the deployment completes, capture the following output values:
+デプロイ完了後、以下の出力値を取得します:
 
-Bash:
+Bash の場合:
 ```bash
-# Inspect the deployment outputs
+# デプロイ出力を確認
 az deployment group show \
   --resource-group rg-azure-sre-agent-demo-lab \
   --name main-aks \
   --query properties.outputs -o json
 ```
 
-PowerShell:
+PowerShell の場合:
 ```powershell
-# Inspect the deployment outputs
+# デプロイ出力を確認
 az deployment group show `
   --resource-group rg-azure-sre-agent-demo-lab `
   --name main-aks `
   --query properties.outputs -o json
 ```
 
-Key output values:
+主要な出力値:
 
-| Output | Description |
-|--------|-------------|
-| `AKS_CLUSTER_NAME` | AKS cluster name |
-| `ACR_LOGIN_SERVER` | ACR login server |
-| `AGC_RESOURCE_ID` | Application Gateway for Containers resource ID |
-| `AGC_FRONTEND_NAME` | AGC frontend name referenced by the Gateway |
-| `AGC_FRONTEND_FQDN` | AGC frontend FQDN |
-| `ALB_IDENTITY_CLIENT_ID` | Managed identity for the ALB Controller |
-| `COSMOS_ACCOUNT_NAME` | Cosmos DB account name |
+| 出力 | 説明 |
+|------|------|
+| `AKS_CLUSTER_NAME` | AKS クラスター名 |
+| `ACR_LOGIN_SERVER` | ACR ログインサーバー |
+| `AGC_RESOURCE_ID` | Application Gateway for Containers リソース ID |
+| `AGC_FRONTEND_NAME` | Gateway から参照する AGC フロントエンド名 |
+| `AGC_FRONTEND_FQDN` | AGC フロントエンド FQDN |
+| `ALB_IDENTITY_CLIENT_ID` | ALB Controller 用マネージド ID |
+| `COSMOS_ACCOUNT_NAME` | Cosmos DB アカウント名 |
 
-### 2. Entra ID app registration
+### 2. Entra ID アプリ登録
 
-#### 2-1. Create the app registration
+#### 2-1. アプリ登録の作成
 
 ```bash
-# Create the app registration and capture the application ID
+# アプリ登録を作成し、アプリケーション ID を取得
 APP_ID=$(az ad app create --display-name "<your-entra-app-name>" --query appId -o tsv)
 TENANT_ID=$(az account show --query tenantId -o tsv)
 
@@ -383,7 +369,7 @@ echo "ClientId : $APP_ID"
 ```
 
 ```powershell
-# Create the app registration and capture the application ID
+# アプリ登録を作成し、アプリケーション ID を取得
 $APP_ID = (az ad app create --display-name "<your-entra-app-name>" --query appId -o tsv)
 $TENANT_ID = (az account show --query tenantId -o tsv)
 
@@ -391,32 +377,30 @@ Write-Host "TenantId : $TENANT_ID"
 Write-Host "ClientId : $APP_ID"
 ```
 
-#### 2-2. Configure the App ID URI and scope
+#### 2-2. App ID URI とスコープの設定
 
-Set the App ID URI to protect it as an API.
+API として保護するために App ID URI を設定します。
 
-Bash:
+Bash の場合:
 ```bash
-# Set the App ID URI (api://<appId> form)
+# App ID URI を設定 (api://<appId> 形式)
 az ad app update --id $APP_ID --identifier-uris "api://${APP_ID}"
 ```
 
-PowerShell:
+PowerShell の場合:
 ```powershell
-# Set the App ID URI (api://<appId> form)
+# App ID URI を設定 (api://<appId> 形式)
 az ad app update --id $APP_ID --identifier-uris "api://$APP_ID"
 ```
 
-If you want to acquire a user token with Azure CLI login credentials, you also need a delegated
-scope (`access_as_user`). It is created automatically when you use `infra/modules/entra-app.bicep`.
-If you registered the app manually, add it with the following commands.
+Azure CLI のログイン資格情報でユーザー トークンを取得する場合は、委任スコープ (`access_as_user`) も必要です。`infra/modules/entra-app.bicep` を使う場合は自動作成されます。手動でアプリ登録した場合は以下のコマンドで追加してください。
 
-Bash:
+Bash の場合:
 ```bash
-# Get the app registration Object ID (different from appId)
+# アプリ登録の Object ID を取得 (appId とは別)
 OBJ_ID=$(az ad app show --id $APP_ID --query id -o tsv)
 
-# Read the existing oauth2PermissionScopes and add access_as_user only if it is missing
+# 既存の oauth2PermissionScopes を取得し、access_as_user が無い場合のみ追加
 APP_JSON=$(az ad app show --id $APP_ID -o json)
 EXISTING_SCOPE_ID=$(echo "$APP_JSON" | jq -r '.api.oauth2PermissionScopes[]? | select(.value == "access_as_user") | .id' | head -n 1)
 if [ -n "$EXISTING_SCOPE_ID" ]; then
@@ -444,12 +428,12 @@ else
 fi
 ```
 
-PowerShell:
+PowerShell の場合:
 ```powershell
-# Get the app registration Object ID (different from appId)
+# アプリ登録の Object ID を取得 (appId とは別)
 $OBJ_ID = (az ad app show --id $APP_ID --query id -o tsv)
 
-# Read the existing oauth2PermissionScopes and add access_as_user only if it is missing
+# 既存の oauth2PermissionScopes を取得し、access_as_user が無い場合のみ追加
 $appJson = az ad app show --id $APP_ID -o json | ConvertFrom-Json
 $existingScopes = @($appJson.api.oauth2PermissionScopes)
 $existingScope = $existingScopes | Where-Object { $_.value -eq "access_as_user" } | Select-Object -First 1
@@ -491,68 +475,65 @@ else {
 }
 ```
 
-> After adding the scope, perform user consent or admin consent according to your tenant's consent
-> policy.
+> スコープ追加後、テナントの同意ポリシーに応じてユーザー同意または管理者同意を実施してください。
 
-Next, add an **app role** for service-to-service (client_credentials) access.
-In the Azure portal, go to **App registrations → App roles → Create app role** and enter the
-following values.
+続いて、サービス間 (client_credentials) アクセス用の **アプリ ロール** を追加します。
+Azure portal の **[アプリの登録] → [アプリ ロール] → [アプリ ロールの作成]** で以下の値を入力してください。
 
-| Field | Value |
-| ----- | ----- |
-| Display name | `Access AzureSREAgentDemoLab API` |
-| Allowed member types | `Applications` |
-| Value | `Api.Access` |
-| Description | `Allows a service to call the AzureSREAgentDemoLab APIs` |
-| Do you want to enable this app role? | On |
+| 項目 | 値 |
+| ------ | ---- |
+| 表示名 | `Access AzureSREAgentDemoLab API` |
+| 許可されるメンバーの種類 | `アプリケーション` |
+| 値 | `Api.Access` |
+| 説明 | `Allows a service to call the AzureSREAgentDemoLab APIs` |
+| このアプリ ロールを有効にする | オン |
 
-> **Note**: You can also add the role via a JSON patch with `az ad app update`, but the portal
-> operation is the most reliable.
+> **注**: `az ad app update` による JSON パッチでロールを追加することもできますが、Portal 操作が最も確実です。
 
-#### 2-3. Create the service principal and client secret
+#### 2-3. サービスプリンシパルとクライアントシークレットの作成
 
-Bash:
+Bash の場合:
 ```bash
-# Create the service principal
+# サービスプリンシパルを作成
 az ad sp create --id $APP_ID
 
-# Create a client secret (expires in 1 year)
+# クライアントシークレットを作成 (有効期限: 1年)
 CLIENT_SECRET=$(az ad app credential reset --id $APP_ID --years 1 --query password -o tsv)
 
-echo "Client secret created. Store it in a safe place."
+echo "ClientSecret を取得しました。安全な場所に保存してください。"
 echo "Audience     : api://$APP_ID"
 ```
 
-PowerShell:
+PowerShell の場合:
 ```powershell
-# Create the service principal
+# サービスプリンシパルを作成
 az ad sp create --id $APP_ID
 
-# Create a client secret (expires in 1 year)
+# クライアントシークレットを作成 (有効期限: 1年)
 $CLIENT_SECRET = (az ad app credential reset --id $APP_ID --years 1 --query password -o tsv)
 
-Write-Host "Client secret created. Store it in a safe place."
+Write-Host "ClientSecret を取得しました。安全な場所に保存してください。"
 Write-Host "Audience     : api://$APP_ID"
 ```
 
-> ⚠️ `CLIENT_SECRET` is shown only once. Be sure to store it in a safe place.
+> ⚠️ `CLIENT_SECRET` は一度しか表示されません。必ず安全な場所に保存してください。
 
-#### 2-4. Grant admin consent for the app role
+#### 2-4. アプリ ロールの管理者同意
 
-> **Prerequisite**: This step uses `jq`.
-> If it is not installed: `sudo apt-get install jq` (Debian/Ubuntu) or `brew install jq` (macOS).
-> An alternative command for when `jq` is unavailable is shown below.
+> **前提**: このステップでは `jq` を使用します。
+> インストールされていない場合: `sudo apt-get install jq` (Debian/Ubuntu) または `brew install jq` (macOS)。
+> `jq` が使えない場合の代替コマンドは以下に記載しています。
 
-Bash:
+Bash の場合:
 ```bash
-# Get the service principal Object ID
+# サービスプリンシパルの Object ID を取得
 SP_OID=$(az ad sp show --id $APP_ID --query id -o tsv)
 
-# Get the appRoleId of the app role
+# アプリ ロールの appRoleId を取得
 ROLE_ID=$(az ad app show --id $APP_ID \
   --query "appRoles[?value=='Api.Access'].id" -o tsv)
 
-# Grant the role to your own service principal (admin consent) — using jq
+# 自身のサービスプリンシパルにロールを付与 (管理者同意) — jq を使う場合
 az rest --method POST \
   --uri "https://graph.microsoft.com/v1.0/servicePrincipals/${SP_OID}/appRoleAssignments" \
   --body "$(jq -n \
@@ -561,7 +542,7 @@ az rest --method POST \
     --arg aid "$ROLE_ID" \
     '{principalId: $pid, resourceId: $rid, appRoleId: $aid}')"
 
-# If jq is unavailable, build the JSON with python3
+# jq がない場合は python3 で JSON を組み立てる
 # az rest --method POST \
 #   --uri "https://graph.microsoft.com/v1.0/servicePrincipals/${SP_OID}/appRoleAssignments" \
 #   --body "$(python3 -c "
@@ -569,15 +550,15 @@ az rest --method POST \
 # print(json.dumps({'principalId': '${SP_OID}', 'resourceId': '${SP_OID}', 'appRoleId': '${ROLE_ID}'}))")"
 ```
 
-PowerShell:
+PowerShell の場合:
 ```powershell
-# Get the service principal Object ID
+# サービスプリンシパルの Object ID を取得
 $SP_OID = (az ad sp show --id $APP_ID --query id -o tsv)
 
-# Get the appRoleId of the app role
+# アプリ ロールの appRoleId を取得
 $ROLE_ID = (az ad app show --id $APP_ID --query "appRoles[?value=='Api.Access'].id" -o tsv)
 
-# Grant the role to your own service principal (admin consent)
+# 自身のサービスプリンシパルにロールを付与 (管理者同意)
 $body = @{
     principalId = $SP_OID
     resourceId  = $SP_OID
@@ -598,67 +579,66 @@ finally {
 }
 ```
 
-#### 2-5. Update the Kubernetes secrets
+#### 2-5. Kubernetes シークレットの更新
 
-Reflect the app registration information into the Kubernetes secrets.
+アプリ登録の情報を Kubernetes シークレットに反映します。
 
-> ⚠️ **Prerequisites**: Before running this step, install and verify the following.
+> ⚠️ **前提条件**: このステップを実行する前に、以下をインストール・確認してください。
 
-**Prerequisite: install kubectl and helm**
+**前提: kubectl と helm のインストール**
 
-Install the tools required to manage the AKS cluster.
+AKS クラスターの管理に必須なツールをインストールしてください。
 
-- **kubectl**: [Official installation guide](https://kubernetes.io/docs/tasks/tools/)
-  - Linux: [Install kubectl on Linux](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
-  - macOS: [Install kubectl on macOS](https://kubernetes.io/docs/tasks/tools/install-kubectl-macos/)
-  - Windows: [Install kubectl on Windows](https://kubernetes.io/docs/tasks/tools/install-kubectl-windows/)
+- **kubectl**: [公式インストールガイド](https://kubernetes.io/docs/tasks/tools/)
+  - Linux: [Linux への kubectl のインストール](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
+  - macOS: [macOS への kubectl のインストール](https://kubernetes.io/docs/tasks/tools/install-kubectl-macos/)
+  - Windows: [Windows への kubectl のインストール](https://kubernetes.io/docs/tasks/tools/install-kubectl-windows/)
 
-- **helm**: [Official installation guide](https://helm.sh/docs/intro/install/)
+- **helm**: [公式インストールガイド](https://helm.sh/docs/intro/install/)
   - Linux/macOS: `curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash`
-  - Windows: [Install on Windows](https://helm.sh/docs/intro/install/#from-scoop-windows)
+  - Windows: [Windows へのインストール](https://helm.sh/docs/intro/install/#from-scoop-windows)
 
-**Step 2-5-1: Verify the connection to the AKS cluster**
+**ステップ 2-5-1: AKS クラスターへの接続確認**
 
-Set the kubectl context using the AKS cluster name output by the Bicep deployment.
+Bicep デプロイで出力された AKS クラスター名を使用して、kubectl コンテキストを設定します。
 
-Bash:
+Bash の場合:
 ```bash
-# Get the AKS cluster name
+# AKS クラスター名を取得
 AKS_NAME=$(az deployment group show -g rg-azure-sre-agent-demo-lab -n main-aks --query properties.outputs.akS_CLUSTER_NAME.value -o tsv)
 
-# Get the AKS cluster credentials
+# AKS クラスターのクレデンシャルを取得
 az aks get-credentials --resource-group rg-azure-sre-agent-demo-lab --name $AKS_NAME --overwrite-existing
 
-# Verify the connection
+# 接続確認
 kubectl cluster-info
 kubectl config current-context
 
-# Create the namespace for the secrets first
+# Secret 登録先の namespace を先に作成
 kubectl apply -f k8s/namespace.yaml
 ```
 
-PowerShell:
+PowerShell の場合:
 ```powershell
-# Get the AKS cluster name
+# AKS クラスター名を取得
 $AKS_NAME = (az deployment group show -g rg-azure-sre-agent-demo-lab -n main-aks --query "properties.outputs.akS_CLUSTER_NAME.value" -o tsv)
 
-# Get the AKS cluster credentials
+# AKS クラスターのクレデンシャルを取得
 az aks get-credentials --resource-group rg-azure-sre-agent-demo-lab --name $AKS_NAME --overwrite-existing
 
-# Verify the connection
+# 接続確認
 kubectl cluster-info
 kubectl config current-context
 
-# Create the namespace for the secrets first
+# Secret 登録先の namespace を先に作成
 kubectl apply -f k8s/namespace.yaml
 ```
 
-If the connection succeeds, the message above is displayed. If it fails, check the resource group
-name, the cluster name, and the subscription.
+接続が成功したら、以下のメッセージが表示されます。失敗した場合は、リソースグループ名、クラスター名、サブスクリプションを確認してください。
 
-**Step 2-5-2: Create the Kubernetes secrets**
+**ステップ 2-5-2: Kubernetes シークレットの作成**
 
-Bash:
+Bash の場合:
 ```bash
 kubectl create secret generic entra-id-secret \
   --namespace azure-sre-agent-demo-lab \
@@ -677,14 +657,14 @@ kubectl create secret generic cosmos-db-secret \
   --dry-run=client -o yaml | kubectl apply -f -
 ```
 
-PowerShell:
+PowerShell の場合:
 ```powershell
-# Use the values captured in the PowerShell steps in 2-1
-# If you run this in a separate session, set them first
+# 2-1 の PowerShell 手順で取得した値を利用
+# 別セッションで実行する場合は事前に設定してください
 # $APP_ID = "<YOUR_CLIENT_ID>"
 # $TENANT_ID = (az account show --query tenantId -o tsv)
 
-# Get the Cosmos DB connection string
+# Cosmos DB の接続文字列を取得
 $COSMOS_ACCOUNT_NAME = (az deployment group show -g rg-azure-sre-agent-demo-lab -n main-aks --query "properties.outputs.COSMOS_ACCOUNT_NAME.value" -o tsv)
 $CONNECTION_STRING = (az cosmosdb keys list `
   --name $COSMOS_ACCOUNT_NAME `
@@ -692,7 +672,7 @@ $CONNECTION_STRING = (az cosmosdb keys list `
   --type connection-strings `
   --query "connectionStrings[0].connectionString" -o tsv)
 
-# Create entra-id-secret
+# entra-id-secret を作成
 kubectl create secret generic entra-id-secret `
   --namespace azure-sre-agent-demo-lab `
   --from-literal="TenantId=$TENANT_ID" `
@@ -700,30 +680,28 @@ kubectl create secret generic entra-id-secret `
   --from-literal="Audience=api://$APP_ID" `
   --dry-run=client -o yaml | kubectl apply -f -
 
-# Create cosmos-db-secret
+# cosmos-db-secret を作成
 kubectl create secret generic cosmos-db-secret `
   --namespace azure-sre-agent-demo-lab `
   --from-literal="ConnectionString=$CONNECTION_STRING" `
   --dry-run=client -o yaml | kubectl apply -f -
 ```
 
-> **Note**: `k8s/catalog-service.yaml` used to contain a Secret template with placeholders, but
-> that template has been separated into `k8s/secrets.template.yaml`. After registering the real
-> values with the `kubectl` commands above, do not apply `k8s/secrets.template.yaml` (it would
-> overwrite them).
+> **注**: `k8s/catalog-service.yaml` にはプレースホルダー入りの Secret テンプレートが含まれていましたが、このテンプレートは `k8s/secrets.template.yaml` に分離されています。
+> 上記 `kubectl` コマンドで実際の値を登録した後は、`k8s/secrets.template.yaml` を apply しないでください (上書きされます)。
 
-### 3. Build and push the container images
+### 3. コンテナイメージのビルドとプッシュ
 
-Bash:
+Bash の場合:
 ```bash
-# Bicep deployment name (do not hardcode)
+# Bicep デプロイ名 (固定値にしない)
 DEPLOYMENT_NAME="<YOUR_BICEP_DEPLOYMENT_NAME>"
 
-# Get the ACR from the deployment outputs
+# ACR をデプロイ出力から取得
 ACR_NAME=$(az deployment group show -g rg-azure-sre-agent-demo-lab -n "$DEPLOYMENT_NAME" --query properties.outputs.ACR_NAME.value -o tsv)
 ACR_LOGIN_SERVER=$(az deployment group show -g rg-azure-sre-agent-demo-lab -n "$DEPLOYMENT_NAME" --query properties.outputs.ACR_LOGIN_SERVER.value -o tsv)
 
-# az acr login takes the registry name (xxxx)
+# az acr login はレジストリ名 (xxxx) を渡す
 az acr login --name "$ACR_NAME"
 
 docker build -t catalog-service:latest -f src/CatalogService/Dockerfile .
@@ -739,13 +717,13 @@ docker push "$ACR_LOGIN_SERVER/order-service:latest"
 docker push "$ACR_LOGIN_SERVER/notification-service:latest"
 ```
 
-PowerShell:
+PowerShell の場合:
 ```powershell
-# Get the ACR from the resource group
+# ACR をリソースグループから取得
 $ACR_NAME = (az acr list -g rg-azure-sre-agent-demo-lab --query "[0].name" -o tsv)
 $ACR_LOGIN_SERVER = (az acr show -g rg-azure-sre-agent-demo-lab -n $ACR_NAME --query "loginServer" -o tsv)
 
-# az acr login takes the registry name (xxxx)
+# az acr login はレジストリ名 (xxxx) を渡す
 az acr login --name $ACR_NAME
 
 docker build -t catalog-service:latest -f src/CatalogService/Dockerfile .
@@ -761,24 +739,22 @@ docker push "$ACR_LOGIN_SERVER/order-service:latest"
 docker push "$ACR_LOGIN_SERVER/notification-service:latest"
 ```
 
-### 4. Install the ALB Controller
+### 4. ALB Controller のインストール
 
-This Bicep creates a **BYO (Bring Your Own) AGC resource** along with a **User Assigned Managed
-Identity + Federated Credential + required RBAC** for the ALB Controller. On the AKS cluster side,
-install the ALB Controller with Helm.
+この Bicep は **BYO (Bring Your Own) の AGC リソース** と、ALB Controller 用の **User Assigned Managed Identity + Federated Credential + 必要 RBAC** まで作成します。AKS クラスター側には、Helm で ALB Controller をインストールします。
 
-Bash:
+Bash の場合:
 ```bash
-# Bicep deployment name (default: main-aks)
+# Bicep デプロイ名 (デフォルト値: main-aks)
 DEPLOYMENT_NAME="${DEPLOYMENT_NAME:-main-aks}"
 
-# Get the AKS credentials
+# AKS クレデンシャルを取得
 AKS_NAME=$(az deployment group show -g rg-azure-sre-agent-demo-lab -n "$DEPLOYMENT_NAME" --query properties.outputs.AKS_CLUSTER_NAME.value -o tsv)
 ALB_CLIENT_ID=$(az deployment group show -g rg-azure-sre-agent-demo-lab -n "$DEPLOYMENT_NAME" --query properties.outputs.ALB_IDENTITY_CLIENT_ID.value -o tsv)
 
 az aks get-credentials --resource-group rg-azure-sre-agent-demo-lab --name $AKS_NAME
 
-# Install the ALB Controller with Helm
+# Helm を利用して ALB Controller をインストール
 helm upgrade --install alb-controller oci://mcr.microsoft.com/application-lb/charts/alb-controller \
   --namespace azure-alb-system \
   --create-namespace \
@@ -786,23 +762,23 @@ helm upgrade --install alb-controller oci://mcr.microsoft.com/application-lb/cha
   --set albController.namespace=azure-alb-system \
   --set albController.podIdentity.clientID=$ALB_CLIENT_ID
 
-# Verify the installation
+# インストール確認
 kubectl get pods -n azure-alb-system
 kubectl get gatewayclass azure-alb-external -o yaml
 ```
 
-PowerShell:
+PowerShell の場合:
 ```powershell
-# Bicep deployment name (default: main-aks)
+# Bicep デプロイ名 (デフォルト値: main-aks)
 $DEPLOYMENT_NAME = if ($DEPLOYMENT_NAME) { $DEPLOYMENT_NAME } else { "main-aks" }
 
-# Get the AKS credentials
+# AKS クレデンシャルを取得
 $AKS_NAME = (az deployment group show -g rg-azure-sre-agent-demo-lab -n $DEPLOYMENT_NAME --query "properties.outputs.AKS_CLUSTER_NAME.value" -o tsv)
 $ALB_CLIENT_ID = (az deployment group show -g rg-azure-sre-agent-demo-lab -n $DEPLOYMENT_NAME --query "properties.outputs.ALB_IDENTITY_CLIENT_ID.value" -o tsv)
 
 az aks get-credentials --resource-group rg-azure-sre-agent-demo-lab --name $AKS_NAME
 
-# Install the ALB Controller with Helm
+# Helm を利用して ALB Controller をインストール
 helm upgrade --install alb-controller oci://mcr.microsoft.com/application-lb/charts/alb-controller `
   --namespace azure-alb-system `
   --create-namespace `
@@ -810,233 +786,229 @@ helm upgrade --install alb-controller oci://mcr.microsoft.com/application-lb/cha
   --set albController.namespace=azure-alb-system `
   --set albController.podIdentity.clientID=$ALB_CLIENT_ID
 
-# Verify the installation
+# インストール確認
 kubectl get pods -n azure-alb-system
 kubectl get gatewayclass azure-alb-external -o yaml
 ```
 
-> See the [ALB Controller (Helm) quickstart](https://learn.microsoft.com/azure/application-gateway/for-containers/quickstart-deploy-application-gateway-for-containers-alb-controller-helm)
-> for details.
+> 詳細は [ALB Controller (Helm) クイックスタート](https://learn.microsoft.com/azure/application-gateway/for-containers/quickstart-deploy-application-gateway-for-containers-alb-controller-helm) を参照してください。
 
-### 5. Kubernetes deployment
+### 5. Kubernetes デプロイ
 
-> **Note**: Secrets were already registered with the `kubectl create secret` commands in step 2-5.
-> `k8s/secrets.template.yaml` is provided as a template, but if you have already registered the
-> secrets, do not apply it (the real values would be overwritten with placeholders).
-> The `image` fields in `k8s/*-service.yaml` contain the `<ACR_NAME>` placeholder, so do not edit
-> the YAML in the repository — substitute into a temporary file and deploy that.
+> **注**: Secret は手順 2-5 の `kubectl create secret` コマンドで登録済みです。
+> `k8s/secrets.template.yaml` はテンプレートとして提供されていますが、Secret を登録済みの場合は apply しないでください (実際の値がプレースホルダーで上書きされます)。
+> `k8s/*-service.yaml` の image は `<ACR_NAME>` プレースホルダーを含むため、リポジトリ上の YAML は編集せず、一時ファイルへ置換してデプロイしてください。
 
-Bash:
+Bash の場合:
 ```bash
 ./scripts/deploy-workloads-with-acr.sh your-acr-name
 ```
 
-PowerShell 7:
+PowerShell 7 の場合:
 ```powershell
 ./scripts/deploy-workloads-with-acr.ps1 -AcrName your-acr-name
 ```
 
-If you prefer not to use the scripts above, you can also deploy with the following steps.
-**However, you must replace `<ACR_NAME>` with the actual ACR login server name.**
+上記スクリプトを使わずに適用する場合は、以下の手順でもデプロイできます。
+**ただし、`<ACR_NAME>` を実際の ACR ログインサーバー名に置き換える必要があります。**
 
-Bash:
+Bash の場合:
 ```bash
-# Set ACR_NAME
+# ACR_NAME を設定
 ACR_NAME="your-acr-name"
 
-# Substitute into the manifests and apply
+# manifest を置換して適用
 sed "s|<ACR_NAME>|${ACR_NAME}|g" k8s/namespace.yaml | kubectl apply -f -
 sed "s|<ACR_NAME>|${ACR_NAME}|g" k8s/catalog-service.yaml | kubectl apply -f -
 sed "s|<ACR_NAME>|${ACR_NAME}|g" k8s/order-service.yaml | kubectl apply -f -
 sed "s|<ACR_NAME>|${ACR_NAME}|g" k8s/notification-service.yaml | kubectl apply -f -
 ```
 
-PowerShell 7:
+PowerShell 7 の場合:
 ```powershell
-# Set ACR_NAME
+# ACR_NAME を設定
 $ACR_NAME = "your-acr-name"
 
-# Substitute into the manifests and apply
+# manifest を置換して適用
 (Get-Content k8s/namespace.yaml) -replace '<ACR_NAME>', $ACR_NAME | kubectl apply -f -
 (Get-Content k8s/catalog-service.yaml) -replace '<ACR_NAME>', $ACR_NAME | kubectl apply -f -
 (Get-Content k8s/order-service.yaml) -replace '<ACR_NAME>', $ACR_NAME | kubectl apply -f -
 (Get-Content k8s/notification-service.yaml) -replace '<ACR_NAME>', $ACR_NAME | kubectl apply -f -
 ```
 
-### 6. Deploy the Gateway API resources
+### 6. Gateway API リソースのデプロイ
 
-Replace `<AGC_RESOURCE_ID>` and `<AGC_FRONTEND_NAME>` in `k8s/gateway.yaml` with the values output
-by the Bicep deployment, then apply.
+`k8s/gateway.yaml` の `<AGC_RESOURCE_ID>` と `<AGC_FRONTEND_NAME>` を Bicep デプロイで出力された値に置き換えてから適用します。
 
-Bash:
+Bash の場合:
 ```bash
-# Bicep deployment name (default: main-aks)
+# Bicep デプロイ名 (デフォルト値: main-aks)
 DEPLOYMENT_NAME="${DEPLOYMENT_NAME:-main-aks}"
 
-# Get the AGC resource ID
+# AGC リソース ID を取得
 AGC_ID=$(az deployment group show -g rg-azure-sre-agent-demo-lab -n "$DEPLOYMENT_NAME" \
   --query properties.outputs.AGC_RESOURCE_ID.value -o tsv)
 
-# Get the AGC frontend name
+# AGC フロントエンド名を取得
 AGC_FRONTEND_NAME=$(az deployment group show -g rg-azure-sre-agent-demo-lab -n "$DEPLOYMENT_NAME" \
   --query properties.outputs.AGC_FRONTEND_NAME.value -o tsv)
 
-# Substitute the placeholders in gateway.yaml and apply
+# gateway.yaml のプレースホルダーを置換して適用
 sed -e "s|<AGC_RESOURCE_ID>|${AGC_ID}|g" \
     -e "s|<AGC_FRONTEND_NAME>|${AGC_FRONTEND_NAME}|g" \
     k8s/gateway.yaml | kubectl apply -f -
 
-# Apply the HTTPRoute
+# HTTPRoute を適用
 kubectl apply -f k8s/httproutes.yaml
 ```
 
-PowerShell:
+PowerShell の場合:
 ```powershell
-# Bicep deployment name (default: main-aks)
+# Bicep デプロイ名 (デフォルト値: main-aks)
 $DEPLOYMENT_NAME = if ($DEPLOYMENT_NAME) { $DEPLOYMENT_NAME } else { "main-aks" }
 
-# Get the AGC resource ID
+# AGC リソース ID を取得
 $AGC_ID = (az deployment group show -g rg-azure-sre-agent-demo-lab -n $DEPLOYMENT_NAME --query "properties.outputs.AGC_RESOURCE_ID.value" -o tsv)
 
-# Get the AGC frontend name
+# AGC フロントエンド名を取得
 $AGC_FRONTEND_NAME = (az deployment group show -g rg-azure-sre-agent-demo-lab -n $DEPLOYMENT_NAME --query "properties.outputs.AGC_FRONTEND_NAME.value" -o tsv)
 
-# Substitute the placeholders in gateway.yaml and apply
+# gateway.yaml のプレースホルダーを置換して適用
 (Get-Content k8s/gateway.yaml) `
   -replace '<AGC_RESOURCE_ID>', $AGC_ID `
   -replace '<AGC_FRONTEND_NAME>', $AGC_FRONTEND_NAME |
   kubectl apply -f -
 
-# Apply the HTTPRoute
+# HTTPRoute を適用
 kubectl apply -f k8s/httproutes.yaml
 ```
 
-### 7. Verify
+### 7. 動作確認
 
-Bash:
+Bash の場合:
 ```bash
-# Bicep deployment name (default: main-aks)
+# Bicep デプロイ名 (デフォルト値: main-aks)
 DEPLOYMENT_NAME="${DEPLOYMENT_NAME:-main-aks}"
 
-# Check the Gateway status
+# Gateway のステータスを確認
 kubectl get gateway -n azure-sre-agent-demo-lab
 
-# Check the HTTPRoute status
+# HTTPRoute のステータスを確認
 kubectl get httproute -n azure-sre-agent-demo-lab
 
-# Get the AGC frontend FQDN
+# AGC フロントエンド FQDN を取得
 AGC_FQDN=$(az deployment group show -g rg-azure-sre-agent-demo-lab -n "$DEPLOYMENT_NAME" \
   --query properties.outputs.AGC_FRONTEND_FQDN.value -o tsv)
 echo "Endpoint: http://${AGC_FQDN}"
 ```
 
-PowerShell:
+PowerShell の場合:
 ```powershell
-# Bicep deployment name (default: main-aks)
+# Bicep デプロイ名 (デフォルト値: main-aks)
 $DEPLOYMENT_NAME = if ($DEPLOYMENT_NAME) { $DEPLOYMENT_NAME } else { "main-aks" }
 
-# Check the Gateway status
+# Gateway のステータスを確認
 kubectl get gateway -n azure-sre-agent-demo-lab
 
-# Check the HTTPRoute status
+# HTTPRoute のステータスを確認
 kubectl get httproute -n azure-sre-agent-demo-lab
 
-# Get the AGC frontend FQDN
+# AGC フロントエンド FQDN を取得
 $AGC_FQDN = (az deployment group show -g rg-azure-sre-agent-demo-lab -n $DEPLOYMENT_NAME --query "properties.outputs.AGC_FRONTEND_FQDN.value" -o tsv)
 Write-Host "Endpoint: http://$AGC_FQDN"
 ```
 
-### 8. Troubleshooting
+### 8. トラブルシューティング
 
-#### Problem: `kubectl apply` fails with "dial tcp 127.0.0.1:8080: connectex: No connection could be made"
+#### 問題: `kubectl apply` でエラー "dial tcp 127.0.0.1:8080: connectex: No connection could be made"
 
-**Cause**: kubectl is not connected to the AKS cluster.
+**原因**: kubectl が AKS クラスターに接続していません。
 
-**Resolution**:
+**解決方法**:
 
-Bash:
+Bash の場合:
 ```bash
-# 1. Check which cluster you are connected to
+# 1. 接続しているクラスターを確認
 kubectl config current-context
 
-# 2. If you are not connected to AKS, get the credentials
+# 2. AKS に接続していない場合、クレデンシャルを取得
 DEPLOYMENT_NAME="${DEPLOYMENT_NAME:-main-aks}"
 AKS_NAME=$(az deployment group show -g rg-azure-sre-agent-demo-lab -n "$DEPLOYMENT_NAME" --query properties.outputs.AKS_CLUSTER_NAME.value -o tsv)
 az aks get-credentials --resource-group rg-azure-sre-agent-demo-lab --name $AKS_NAME --overwrite-existing
 
-# 3. Verify the connection
+# 3. 接続確認
 kubectl cluster-info
 kubectl get nodes
 ```
 
-PowerShell:
+PowerShell の場合:
 ```powershell
-# 1. Check which cluster you are connected to
+# 1. 接続しているクラスターを確認
 kubectl config current-context
 
-# 2. If you are not connected to AKS, get the credentials
+# 2. AKS に接続していない場合、クレデンシャルを取得
 $AKS_NAME = (az deployment group show -g rg-azure-sre-agent-demo-lab -n main-aks --query "properties.outputs.akS_CLUSTER_NAME.value" -o tsv)
 az aks get-credentials --resource-group rg-azure-sre-agent-demo-lab --name $AKS_NAME --overwrite-existing
 
-# 3. Verify the connection
+# 3. 接続確認
 kubectl cluster-info
 kubectl get nodes
 ```
 
-#### Problem: Cannot retrieve the Cosmos DB connection string
+#### 問題: Cosmos DB の接続文字列が取得できない
 
-**Cause**: The resource group name or resource name may be incorrect.
+**原因**: リソースグループ名またはリソース名が正しくない可能性があります。
 
-**Resolution**:
+**解決方法**:
 
-Bash:
+Bash の場合:
 ```bash
-# Check the Cosmos DB account name from the Bicep deployment outputs
+# Bicep デプロイの出力から Cosmos DB アカウント名を確認
 az deployment group show \
   -g rg-azure-sre-agent-demo-lab \
   -n main-aks \
   --query "properties.outputs.cosmoS_ACCOUNT_NAME.value" -o tsv
 
-# Check the resource groups
+# リソースグループを確認
 az group list --query "[].name" -o table
 ```
 
-PowerShell:
+PowerShell の場合:
 ```powershell
-# Check the Cosmos DB account name from the Bicep deployment outputs
+# Bicep デプロイの出力から Cosmos DB アカウント名を確認
 az deployment group show `
   -g rg-azure-sre-agent-demo-lab `
   -n main-aks `
   --query "properties.outputs.cosmoS_ACCOUNT_NAME.value" -o tsv
 
-# Check the resource groups
+# リソースグループを確認
 az group list --query "[].name" -o table
 ```
 
-#### Problem: Namespace `azure-sre-agent-demo-lab` does not exist
+#### 問題: Namespace `azure-sre-agent-demo-lab` が存在しない
 
-**Resolution**:
+**解決方法**:
 
-Bash / PowerShell (same command for both):
+Bash / PowerShell の場合 (どちらも同じコマンド):
 ```bash
-# Create the namespace
+# namespace を作成
 kubectl create namespace azure-sre-agent-demo-lab
 ```
 
-## Entra ID authentication flow (AKS environment)
+## Entra ID 認証フロー (AKS 環境)
 
-All services deployed to AKS are protected with JWT bearer authentication.
-Use the steps below to obtain an access token from Entra ID and call the APIs.
+AKS にデプロイされたサービスはすべて JWT ベアラー認証で保護されています。
+以下の手順で Entra ID からアクセストークンを取得し、API を呼び出してください。
 
-### Set the prerequisite variables
+### 前提変数のセット
 
-Bash:
+Bash の場合:
 ```bash
 TENANT_ID="<YOUR_TENANT_ID>"   # az account show --query tenantId -o tsv
-CLIENT_ID="<YOUR_CLIENT_ID>"   # Application (client) ID of the app registration
+CLIENT_ID="<YOUR_CLIENT_ID>"   # アプリ登録の Application (client) ID
 CLIENT_SECRET="<YOUR_CLIENT_SECRET>"
 API_SCOPE="api://${CLIENT_ID}/access_as_user"
-# Get the AGC frontend FQDN
+# AGC フロントエンド FQDN を取得
 AGC_FQDN=$(kubectl get gateway azure-sre-agent-demo-lab-gateway \
   -n azure-sre-agent-demo-lab \
   -o jsonpath='{.status.addresses[0].value}')
@@ -1046,31 +1018,31 @@ if [ -z "$AGC_FQDN" ]; then
 fi
 
 echo "AGC endpoint: ${AGC_FQDN}"
-# If empty, check the status with:
+# 空の場合は以下で状態を確認:
 # kubectl get gateway azure-sre-agent-demo-lab-gateway -n azure-sre-agent-demo-lab -o wide
 ```
 
-PowerShell:
+PowerShell の場合:
 ```powershell
 $TENANT_ID = "<YOUR_TENANT_ID>"   # az account show --query tenantId -o tsv
-$CLIENT_ID = "<YOUR_CLIENT_ID>"   # Application (client) ID of the app registration
+$CLIENT_ID = "<YOUR_CLIENT_ID>"   # アプリ登録の Application (client) ID
 $CLIENT_SECRET = "<YOUR_CLIENT_SECRET>"
 $API_SCOPE = "api://$CLIENT_ID/access_as_user"
 $DEPLOYMENT_NAME = if ($DEPLOYMENT_NAME) { $DEPLOYMENT_NAME } else { "main-aks" }
-# Get the AGC frontend FQDN
+# AGC フロントエンド FQDN を取得
 $AGC_FQDN = (kubectl get gateway azure-sre-agent-demo-lab-gateway -n azure-sre-agent-demo-lab -o jsonpath='{.status.addresses[0].value}' 2>$null)
 if (-not $AGC_FQDN) {
   $AGC_FQDN = (az deployment group show -g rg-azure-sre-agent-demo-lab -n $DEPLOYMENT_NAME --query "properties.outputs.AGC_FRONTEND_FQDN.value" -o tsv)
 }
 
 Write-Host "AGC endpoint: $AGC_FQDN"
-# If empty, check the status with:
+# 空の場合は以下で状態を確認:
 # kubectl get gateway azure-sre-agent-demo-lab-gateway -n azure-sre-agent-demo-lab -o wide
 ```
 
-### Obtain an access token (client_credentials flow)
+### アクセストークンの取得 (client_credentials フロー)
 
-Bash:
+Bash の場合:
 ```bash
 TOKEN=$(curl -s -X POST \
   "https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token" \
@@ -1088,12 +1060,11 @@ else
 fi
 ```
 
-> If `jq` is unavailable, replace it with
-> `python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])"`.
+> `jq` がない場合は `python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])"` に置き換えてください。
 
-PowerShell:
+PowerShell の場合:
 ```powershell
-# Helper function for URL encoding
+# URL エンコード用の関数
 function ConvertTo-UrlEncoded($str) {
   return [System.Net.WebUtility]::UrlEncode($str)
 }
@@ -1109,20 +1080,18 @@ $TOKEN = $tokenResponse.access_token
 if ($TOKEN) { Write-Host "Token acquired: yes" } else { Write-Host "Token acquired: no" }
 ```
 
-### Obtain an access token (Azure CLI login credentials)
+### アクセストークンの取得 (Azure CLI ログイン資格情報)
 
-This flow acquires an access token using the user credentials already signed in to the Azure CLI.
-`CLIENT_SECRET` is not required.
+このフローでは Azure CLI にログイン済みのユーザー資格情報を使ってアクセストークンを取得します。`CLIENT_SECRET` は不要です。
 
-> Prerequisite: the API must expose the delegated scope (`access_as_user`), and user consent or
-> admin consent must be granted.
+> 前提: API 側に委任スコープ (`access_as_user`) が公開され、ユーザー同意または管理者同意が済んでいること。
 
-Bash:
+Bash の場合:
 ```bash
-# Sign in to the Azure CLI (only if not already signed in)
+# Azure CLI にログイン (未ログイン時のみ)
 az login --tenant "$TENANT_ID"
 
-# Select the target subscription if needed
+# 必要に応じて対象サブスクリプションを選択
 az account set --subscription "<YOUR_SUBSCRIPTION_ID>"
 
 TOKEN=$(az account get-access-token \
@@ -1137,12 +1106,12 @@ else
 fi
 ```
 
-PowerShell:
+PowerShell の場合:
 ```powershell
-# Sign in to the Azure CLI (only if not already signed in)
+# Azure CLI にログイン (未ログイン時のみ)
 az login --tenant $TENANT_ID
 
-# Select the target subscription if needed
+# 必要に応じて対象サブスクリプションを選択
 az account set --subscription "<YOUR_SUBSCRIPTION_ID>"
 
 $TOKEN = (az account get-access-token `
@@ -1153,87 +1122,86 @@ $TOKEN = (az account get-access-token `
 if ($TOKEN) { Write-Host "Token acquired: yes" } else { Write-Host "Token acquired: no" }
 ```
 
-> `az account get-access-token` returns a user delegation token. For background services or other
-> contexts that run without a user, use the `client_credentials` flow above.
+> `az account get-access-token` はユーザー委任トークンを返します。バックグラウンド サービスなどユーザー コンテキストなしで実行する場合は、上記の `client_credentials` フローを使用してください。
 
-### Example authenticated API calls
+### 認証付き API 呼び出しの例
 
-Bash:
+Bash の場合:
 ```bash
-# List products (CatalogService)
+# 商品一覧取得 (CatalogService)
 curl -s -H "Authorization: Bearer $TOKEN" \
   http://$AGC_FQDN/catalog/api/products | jq .
 
-# List categories (CatalogService)
+# カテゴリ一覧取得 (CatalogService)
 curl -s -H "Authorization: Bearer $TOKEN" \
   http://$AGC_FQDN/catalog/api/categories | jq .
 
-# List orders (OrderService)
+# 注文一覧取得 (OrderService)
 curl -s -H "Authorization: Bearer $TOKEN" \
   http://$AGC_FQDN/orders/api/orders | jq .
 
-# List notifications (NotificationService)
+# 通知一覧取得 (NotificationService)
 curl -s -H "Authorization: Bearer $TOKEN" \
   http://$AGC_FQDN/notifications/api/notifications | jq .
 ```
 
-> Accessing without a token returns HTTP **401 Unauthorized**:
+> トークンなしでアクセスすると HTTP **401 Unauthorized** が返ります:
 >
 > ```bash
 > curl -o /dev/null -w "%{http_code}" http://$AGC_FQDN/catalog/api/products
 > # → 401
 > ```
 
-PowerShell:
+PowerShell の場合:
 ```powershell
 $headers = @{ Authorization = "Bearer $TOKEN" }
 
-# List products (CatalogService)
+# 商品一覧取得 (CatalogService)
 Invoke-RestMethod -Uri "http://$AGC_FQDN/catalog/api/products" -Headers $headers
 
-# List categories (CatalogService)
+# カテゴリ一覧取得 (CatalogService)
 Invoke-RestMethod -Uri "http://$AGC_FQDN/catalog/api/categories" -Headers $headers
 
-# List orders (OrderService)
+# 注文一覧取得 (OrderService)
 Invoke-RestMethod -Uri "http://$AGC_FQDN/orders/api/orders" -Headers $headers
 
-# List notifications (NotificationService)
+# 通知一覧取得 (NotificationService)
 Invoke-RestMethod -Uri "http://$AGC_FQDN/notifications/api/notifications" -Headers $headers
 ```
 
-> Accessing without a token returns HTTP **401 Unauthorized**:
+> トークンなしでアクセスすると HTTP **401 Unauthorized** が返ります:
 >
 > ```powershell
 > (Invoke-WebRequest -Uri "http://$AGC_FQDN/catalog/api/products" -SkipHttpErrorCheck).StatusCode
 > # → 401
 > ```
 
-### Reproducing the bugs in the AKS environment (authenticated)
+### AKS 環境でのバグ再現 (認証付き)
 
-#### Premium slow path
+#### プレミアム遅延パス
 
-Bash:
+Bash の場合:
 ```bash
-# Trigger an intentional slowdown with a "premium" query
+# "premium" クエリで意図的なスローダウンを発生させる
 curl -s -H "Authorization: Bearer $TOKEN" \
   "http://$AGC_FQDN/catalog/api/products/search?q=premium"
 ```
 
-PowerShell:
+PowerShell の場合:
 ```powershell
-# Trigger an intentional slowdown with a "premium" query
+# "premium" クエリで意図的なスローダウンを発生させる
 Invoke-RestMethod -Uri "http://$AGC_FQDN/catalog/api/products/search?q=premium" `
   -Headers @{ Authorization = "Bearer $TOKEN" }
 ```
 
-- Expected behavior: the response takes several seconds (a `Thread.Sleep` loop)
-- Inspecting the trace in OpenTelemetry shows an inflated `duration` on the `SearchAsync` span
+- 期待される挙動: レスポンスに数秒かかる (Thread.Sleep ループ)
+- OpenTelemetry でトレースを確認すると `SearchAsync` スパンの `duration` が肥大化していることが分かる
 
-#### Long-query 500 error path
+#### 長大クエリ 500 エラーパス
 
-Bash:
+Bash の場合:
 ```bash
-# Trigger an ArgumentOutOfRangeException with a query longer than 100 characters
+# 100文字を超えるクエリで ArgumentOutOfRangeException を発生させる
 LONG_QUERY=$(python3 -c "print('a' * 150)")
 curl -s -o /dev/null -w "%{http_code}" \
   -H "Authorization: Bearer $TOKEN" \
@@ -1241,9 +1209,9 @@ curl -s -o /dev/null -w "%{http_code}" \
 # → 500
 ```
 
-PowerShell:
+PowerShell の場合:
 ```powershell
-# Trigger an ArgumentOutOfRangeException with a query longer than 100 characters
+# 100文字を超えるクエリで ArgumentOutOfRangeException を発生させる
 $LONG_QUERY = "a" * 150
 $response = Invoke-WebRequest `
   -Uri "http://$AGC_FQDN/catalog/api/products/search?q=$LONG_QUERY" `
@@ -1252,8 +1220,8 @@ $response = Invoke-WebRequest `
 $response.StatusCode  # → 500
 ```
 
-- Expected behavior: HTTP 500 is returned
-- An exception log with a stack trace is recorded in Application Insights / OpenTelemetry
+- 期待される挙動: HTTP 500 が返る
+- Application Insights / OpenTelemetry にスタックトレース付きの例外ログが記録される
 
 ## Azure SRE Agent Demo Integration
 
@@ -1263,7 +1231,7 @@ This repository includes a **complete, executable 20-minute demo** showing how t
 
 1. **Setup** — Configure SRE Agent resources (5 min)
 
-   Bash:
+   Bash の場合:
    ```bash
    az deployment group create \
      --resource-group <resource-group> \
@@ -1277,7 +1245,7 @@ This repository includes a **complete, executable 20-minute demo** showing how t
        "failedRequestCountThreshold=5"
    ```
 
-   PowerShell:
+   PowerShell の場合:
    ```powershell
    az deployment group create `
      --resource-group <resource-group> `
@@ -1295,10 +1263,7 @@ This repository includes a **complete, executable 20-minute demo** showing how t
 
    The quotes around each `key=value` argument are required when the callback URL contains query string parameters such as `&sp=`, `&sv=`, and `&sig=`.
 
-   > **Note**: To update only the SRE resources, use `infra/sre-overlay.bicep`. Re-running
-   > `infra/main.bicep` after `azd deploy` may revert the Container Apps to the provisioning sample
-   > image (`mcr.microsoft.com/dotnet/samples:aspnetapp`). If you see the sample image, run
-   > `azd deploy` to re-apply the service images.
+   > **注意**: SRE リソースだけを更新する場合は `infra/sre-overlay.bicep` を使ってください。`azd deploy` 後に `infra/main.bicep` を再実行すると、Container Apps がプロビジョニング用サンプル image (`mcr.microsoft.com/dotnet/samples:aspnetapp`) に戻る可能性があります。サンプル image が表示される場合は `azd deploy` を実行してサービス image を再反映してください。
 
 2. **Run the Demo** — Complete incident cycle (20 min)
    - See: [SRE Scenario - 20 Minute Demo](./docs/sre-scenario-20min.md)
@@ -1318,7 +1283,7 @@ This repository includes a **complete, executable 20-minute demo** showing how t
 - **[SRE Agent Setup Guide (Japanese)](./docs/sre-agent-setup_ja.md)** — 日本語版セットアップガイド
 - **[20-Minute Scenario](./docs/sre-scenario-20min.md)** — Executable demo with expected outputs
 - **[20-Minute Scenario (Japanese)](./docs/sre-scenario-20min_ja.md)** — 日本語版デモシナリオ
-- **[Entra ID App Setup](./docs/entra-app-setup.md)** — Entra ID application registration guide
+- **[Entra ID アプリ登録セットアップ](./docs/entra-app-setup_ja.md)** — Entra ID アプリケーション登録ガイド
 - **[Azure SRE Agent Official Docs](https://sre.azure.com)** — Full reference
 
 ### Architecture
@@ -1348,49 +1313,49 @@ Agent Reasoning → Suggests root cause & resolution
 
 ---
 
-## ⚠️ Intentional bug (for SRE training)
+## ⚠️ 意図的なバグ (SRE トレーニング用)
 
-This application embeds exactly one intentional performance issue for **educational purposes**.
+このアプリケーションには **教材目的** で1か所だけ意図的なパフォーマンス問題が埋め込まれています。
 
-### Location
+### 場所
 
-The `SearchAsync` method in `src/CatalogService/Services/ProductSearchService.cs`.
+`src/CatalogService/Services/ProductSearchService.cs` の `SearchAsync` メソッド
 
-### Trigger conditions
+### トリガー条件
 
-1. **Slowdown**: Send a request whose query parameter `q` contains `premium`.
+1. **スローダウン**: クエリパラメータ `q` に `premium` を含めてリクエスト
 
    ```bash
    curl http://localhost:5001/api/products/search?q=premium
    ```
 
-   - Cause: a synchronous loop containing `Thread.Sleep(100)` processes all products sequentially
-   - Result: the response time balloons to several seconds and the thread pool is exhausted
+   - 原因: `Thread.Sleep(100)` を含む同期ループで全商品を逐次処理
+   - 結果: レスポンスタイムが数秒に膨張、スレッドプール枯渇
 
-2. **500 error**: Send a string longer than 100 characters in the query parameter `q`.
+2. **500エラー**: クエリパラメータ `q` に100文字を超える文字列を送信
 
    ```bash
    curl "http://localhost:5001/api/products/search?q=$(python3 -c 'print("a"*150)')"
    ```
 
-   - Cause: a missing boundary check in `String.Substring`
-   - Result: `ArgumentOutOfRangeException` → HTTP 500
+   - 原因: `String.Substring` の境界チェック不備
+   - 結果: `ArgumentOutOfRangeException` → HTTP 500
 
-## Sample data
+## サンプルデータ
 
-Automatically seeded into Cosmos DB when each service starts:
+各サービス起動時に Cosmos DB へ自動投入:
 
-| Data | Count | Description |
-| ---- | ----- | ----------- |
-| Products | 20 | Electronics, clothing, food, books, premium |
-| Categories | 5 | Electronics, Clothing, Food, Books, Premium |
-| Inventory | 20 | One per product |
-| Orders | 10 | Various statuses |
-| Notifications | 15 | Order confirmations, shipping notices, promotions, etc. |
+| データ | 件数 | 説明 |
+| ------ | ---- | ---- |
+| 商品 | 20 | 電子機器、衣料品、食品、書籍、プレミアム |
+| カテゴリ | 5 | Electronics, Clothing, Food, Books, Premium |
+| 在庫 | 20 | 各商品に対応 |
+| 注文 | 10 | 様々なステータス |
+| 通知 | 15 | 注文確認、出荷通知、プロモーション等 |
 
-> **Note**: The Cosmos DB database name `GlobalAzureDemo` is a legacy runtime/data-plane value and
-> is intentionally retained even after the project was renamed to `AzureSREAgentDemoLab`.
+> **注**: Cosmos DB のデータベース名 `GlobalAzureDemo` は、プロジェクト名を `AzureSREAgentDemoLab`
+> に変更した後もランタイム（データプレーン）の値として意図的に維持しています。
 
-## License
+## ライセンス
 
-This project is licensed under the [MIT License](./LICENSE).
+本プロジェクトは [MIT License](./LICENSE) の下で公開されています。

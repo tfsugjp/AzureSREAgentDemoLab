@@ -1,26 +1,29 @@
-# Entra ID アプリケーション登録セットアップガイド
+# Entra ID Application Registration Setup Guide
 
-このガイドでは、GlobalAzureDemo2026 Container Apps API用のEntra IDアプリケーション登録を作成し、azd環境に設定する手順を説明します。
+> 日本語版は [entra-app-setup_ja.md](./entra-app-setup_ja.md) を参照してください。
 
-## 前提条件
+This guide explains how to create a Microsoft Entra ID application registration for the
+AzureSREAgentDemoLab Container Apps API and configure it in your `azd` environment.
 
-- Azure CLIがインストールされていること
-- 適切なAzureサブスクリプションにログインしていること
-- Microsoft Graph拡張機能を使用する権限があること(またはCLI方法を使用)
+## Prerequisites
 
-## 方法1: Bicep IaCで作成 (推奨)
+- Azure CLI is installed.
+- You are signed in to the correct Azure subscription.
+- You have permission to use the Microsoft Graph extension (or use the CLI method).
 
-### ステップ1: Bicepテンプレートをデプロイ
+## Method 1: Create with Bicep IaC (recommended)
+
+### Step 1: Deploy the Bicep template
 
 ```powershell
-# 環境名を設定
+# Set the environment name
 $envName = "dev"
-$appName = "GlobalAzureDemo-API-Dev"
+$appName = "<your-entra-app-name>"
 
-# リソースグループを作成(まだ存在しない場合)
+# Create the resource group (if it does not already exist)
 az group create --name "rg-entra-apps" --location "westus3"
 
-# Entra IDアプリケーション登録を作成
+# Create the Entra ID application registration
 az deployment group create `
   --resource-group "rg-entra-apps" `
   --name "entra-app" `
@@ -29,12 +32,12 @@ az deployment group create `
   --query "properties.outputs"
 ```
 
-### ステップ2: 出力値を取得
+### Step 2: Capture the output values
 
-デプロイが完了したら、以下の値を記録します:
+After the deployment completes, record the following values:
 
 ```powershell
-# デプロイ結果から値を取得
+# Read the values from the deployment result
 $deploymentOutput = az deployment group show `
   --resource-group "rg-entra-apps" `
   --name "entra-app" `
@@ -44,7 +47,7 @@ $deploymentOutput = az deployment group show `
 $clientId = $deploymentOutput.applicationId.value
 $audience = $deploymentOutput.identifierUri.value
 
-# テナントIDを取得
+# Get the tenant ID
 $tenantId = az account show --query tenantId -o tsv
 
 Write-Host "ENTRA_TENANT_ID: $tenantId"
@@ -52,16 +55,16 @@ Write-Host "ENTRA_CLIENT_ID: $clientId"
 Write-Host "ENTRA_AUDIENCE: $audience"
 ```
 
-## 方法2: Azure CLIで作成 (シンプル)
+## Method 2: Create with Azure CLI (simple)
 
-### ステップ1: アプリケーション登録を作成
+### Step 1: Create the application registration
 
 ```powershell
-# 環境名を設定
+# Set the environment name
 $envName = "dev"
-$appName = "GlobalAzureDemo-API-Dev"
+$appName = "<your-entra-app-name>"
 
-# アプリケーション登録を作成
+# Create the application registration
 $app = az ad app create `
   --display-name $appName `
   --sign-in-audience "AzureADMyOrg" `
@@ -75,10 +78,10 @@ Write-Host "Application (Client) ID: $clientId"
 Write-Host "Object ID: $objectId"
 ```
 
-### ステップ2: App ID URI (Audience) を設定
+### Step 2: Set the App ID URI (Audience)
 
 ```powershell
-# App ID URIを設定
+# Set the App ID URI
 $audience = "api://$clientId"
 
 az ad app update `
@@ -88,10 +91,10 @@ az ad app update `
 Write-Host "Audience (App ID URI): $audience"
 ```
 
-### ステップ3: APIスコープを公開 (オプション)
+### Step 3: Expose an API scope (optional)
 
 ```powershell
-# OAuth2スコープを定義
+# Define an OAuth2 scope
 $scopeId = [guid]::NewGuid().ToString()
 $scopes = @{
   oauth2PermissionScopes = @(
@@ -108,24 +111,24 @@ $scopes = @{
   )
 }
 
-# スコープを追加
+# Add the scope
 $scopesJson = $scopes | ConvertTo-Json -Depth 10
 az ad app update --id $objectId --set api="$scopesJson"
 ```
 
-### ステップ4: サービスプリンシパルを作成
+### Step 4: Create the service principal
 
 ```powershell
-# サービスプリンシパル (Enterprise Application) を作成
+# Create the service principal (Enterprise Application)
 az ad sp create --id $clientId
 
 Write-Host "Service Principal created successfully"
 ```
 
-### ステップ5: テナントIDを取得
+### Step 5: Get the tenant ID
 
 ```powershell
-# テナントIDを取得
+# Get the tenant ID
 $tenantId = az account show --query tenantId -o tsv
 
 Write-Host "ENTRA_TENANT_ID: $tenantId"
@@ -133,35 +136,35 @@ Write-Host "ENTRA_CLIENT_ID: $clientId"
 Write-Host "ENTRA_AUDIENCE: $audience"
 ```
 
-## ステップ3: azd環境を作成して設定
+## Step 3: Create and configure the azd environment
 
-### 3.1 新しいazd環境を作成
+### 3.1 Create a new azd environment
 
 ```powershell
-# プロジェクトのルートディレクトリに移動
+# Move to the project root directory
 cd <repo-root>
 
-# dev環境を作成
+# Create the dev environment
 azd env new dev -l westus3
 ```
 
-### 3.2 Entra ID設定を環境に追加
+### 3.2 Add the Entra ID settings to the environment
 
 ```powershell
-# 上記で取得した値を設定
+# Set the values captured above
 azd env set ENTRA_TENANT_ID $tenantId
 azd env set ENTRA_CLIENT_ID $clientId
 azd env set ENTRA_AUDIENCE $audience
 ```
 
-### 3.3 環境変数を確認
+### 3.3 Verify the environment variables
 
 ```powershell
-# 設定された環境変数を確認
+# Check the configured environment variables
 azd env get-values
 ```
 
-期待される出力:
+Expected output:
 
 ```text
 AZURE_ENV_NAME="dev"
@@ -171,59 +174,59 @@ ENTRA_CLIENT_ID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 ENTRA_TENANT_ID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 ```
 
-## 次のステップ
+## Next steps
 
-環境設定が完了したら、以下のコマンドで検証とデプロイを実行できます:
+Once the environment is configured, you can validate and deploy:
 
-### 検証 (What-If分析)
+### Validation (What-If analysis)
 
 ```powershell
-# Bicepテンプレートのプレビュー検証
+# Preview the Bicep template changes
 azd provision --preview
 ```
 
-### デプロイ
+### Deploy
 
 ```powershell
-# インフラストラクチャとアプリケーションをデプロイ
+# Deploy the infrastructure and the application
 azd up
 ```
 
-または個別に:
+Or individually:
 
 ```powershell
-# インフラストラクチャのみプロビジョニング
+# Provision the infrastructure only
 azd provision
 
-# アプリケーションのみデプロイ
+# Deploy the application only
 azd deploy
 ```
 
-## トラブルシューティング
+## Troubleshooting
 
-### エラー: "insufficient privileges to complete the operation"
+### Error: "insufficient privileges to complete the operation"
 
-Microsoft Graph拡張を使用したBicepデプロイには、Azure AD管理者権限が必要です。
-権限がない場合は、**方法2 (Azure CLI)** を使用してください。
+Bicep deployments that use the Microsoft Graph extension require Azure AD administrator
+privileges. If you do not have them, use **Method 2 (Azure CLI)** instead.
 
-### エラー: "AADSTS700016: Application not found"
+### Error: "AADSTS700016: Application not found"
 
-サービスプリンシパルが作成されていない可能性があります:
+The service principal may not have been created:
 
 ```powershell
 az ad sp create --id <clientId>
 ```
 
-### 環境変数が反映されない
+### Environment variables are not applied
 
-`.azure/dev/.env`ファイルを直接確認してください:
+Inspect the `.azure/dev/.env` file directly:
 
 ```powershell
 Get-Content .azure\dev\.env
 ```
 
-## 参考資料
+## References
 
-- [Microsoft Entra ID アプリケーション登録ドキュメント](https://learn.microsoft.com/entra/identity-platform/quickstart-register-app)
-- [Azure Developer CLI 環境管理](https://learn.microsoft.com/azure/developer/azure-developer-cli/manage-environment-variables)
-- [ASP.NET Core JWT Bearer 認証](https://learn.microsoft.com/aspnet/core/security/authentication/jwt-authn)
+- [Microsoft Entra ID application registration documentation](https://learn.microsoft.com/entra/identity-platform/quickstart-register-app)
+- [Azure Developer CLI environment management](https://learn.microsoft.com/azure/developer/azure-developer-cli/manage-environment-variables)
+- [ASP.NET Core JWT Bearer authentication](https://learn.microsoft.com/aspnet/core/security/authentication/jwt-authn)
