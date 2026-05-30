@@ -17,13 +17,13 @@ public class ProductSearchService : IProductSearchService
 
     public async Task<IEnumerable<Product>> SearchAsync(string query)
     {
-        var safeQuery = LogSanitizer.Sanitize(query);
-        _logger.LogInformation("Searching products with query: {Query}", safeQuery);
-
         if (query.Length > 200)
         {
             query = query[..200];
         }
+
+        var safeQuery = LogSanitizer.Sanitize(query);
+        _logger.LogInformation("Searching products with query: {Query}", safeQuery);
 
         // Normal path - works fine for most queries
         var sqlQuery = new QueryDefinition(
