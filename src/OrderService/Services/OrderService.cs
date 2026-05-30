@@ -1,4 +1,5 @@
 using Microsoft.Azure.Cosmos;
+using SharedLibrary.Logging;
 using SharedLibrary.Models;
 
 namespace OrderService.Services;
@@ -52,6 +53,7 @@ public class OrderServiceImpl : IOrderService
 
     public async Task<Order?> GetByIdAsync(string id)
     {
+        var safeOrderId = LogSanitizer.Sanitize(id);
         var query = _container.GetItemQueryIterator<Order>(
             new QueryDefinition("SELECT * FROM c WHERE c.id = @id")
                 .WithParameter("@id", id));
@@ -64,28 +66,32 @@ public class OrderServiceImpl : IOrderService
                 return order;
         }
 
-        _logger.LogWarning("Order {OrderId} not found", id);
+        _logger.LogWarning("Order {OrderId} not found", safeOrderId);
         return null;
     }
 
     public async Task<Order> CreateAsync(Order order)
     {
         order.Id = string.IsNullOrWhiteSpace(order.Id) ? Guid.NewGuid().ToString() : order.Id;
+        var safeOrderId = LogSanitizer.Sanitize(order.Id);
+        var safeUserId = LogSanitizer.Sanitize(order.UserId);
         order.Status = OrderStatus.Pending;
         order.TotalAmount = order.Items.Sum(i => i.Subtotal);
         order.CreatedAt = DateTime.UtcNow;
         order.UpdatedAt = DateTime.UtcNow;
 
         var response = await _container.CreateItemAsync(order, new PartitionKey(order.UserId));
-        _logger.LogInformation("Created order {OrderId} for user {UserId}", order.Id, order.UserId);
+        _logger.LogInformation("Created order {OrderId} for user {UserId}", safeOrderId, safeUserId);
         return response.Resource;
     }
 
     public async Task<Order?> UpdateStatusAsync(string id, string status)
     {
+        var safeOrderId = LogSanitizer.Sanitize(id);
+        var safeStatus = LogSanitizer.Sanitize(status);
         if (!ValidStatuses.Contains(status))
         {
-            _logger.LogWarning("Invalid status '{Status}' for order {OrderId}", status, id);
+            _logger.LogWarning("Invalid status '{Status}' for order {OrderId}", safeStatus, safeOrderId);
             return null;
         }
 
@@ -95,8 +101,9 @@ public class OrderServiceImpl : IOrderService
 
         if (AllowedTransitions.TryGetValue(order.Status, out var allowed) && !allowed.Contains(status))
         {
+            var safeCurrentStatus = LogSanitizer.Sanitize(order.Status);
             _logger.LogWarning("Invalid status transition from '{Current}' to '{New}' for order {OrderId}",
-                order.Status, status, id);
+                safeCurrentStatus, safeStatus, safeOrderId);
             return null;
         }
 
@@ -104,23 +111,25 @@ public class OrderServiceImpl : IOrderService
         order.UpdatedAt = DateTime.UtcNow;
 
         var response = await _container.ReplaceItemAsync(order, order.Id, new PartitionKey(order.UserId));
-        _logger.LogInformation("Updated order {OrderId} status to {Status}", id, status);
+        _logger.LogInformation("Updated order {OrderId} status to {Status}", safeOrderId, safeStatus);
         return response.Resource;
     }
 
     public async Task<bool> DeleteAsync(string id)
     {
+        var safeOrderId = LogSanitizer.Sanitize(id);
         var order = await GetByIdAsync(id);
         if (order is null)
             return false;
 
         await _container.DeleteItemAsync<Order>(id, new PartitionKey(order.UserId));
-        _logger.LogInformation("Deleted order {OrderId}", id);
+        _logger.LogInformation("Deleted order {OrderId}", safeOrderId);
         return true;
     }
 
     public async Task<IEnumerable<Order>> GetByUserIdAsync(string userId)
     {
+        var safeUserId = LogSanitizer.Sanitize(userId);
         var query = _container.GetItemQueryIterator<Order>(
             new QueryDefinition("SELECT * FROM c WHERE c.userId = @userId")
                 .WithParameter("@userId", userId),
@@ -133,19 +142,21 @@ public class OrderServiceImpl : IOrderService
             results.AddRange(response);
         }
 
-        _logger.LogInformation("Retrieved {Count} orders for user {UserId}", results.Count, userId);
+        _logger.LogInformation("Retrieved {Count} orders for user {UserId}", results.Count, safeUserId);
         return results;
     }
 
     public async Task<Order?> CancelAsync(string id)
     {
+        var safeOrderId = LogSanitizer.Sanitize(id);
         var order = await GetByIdAsync(id);
         if (order is null)
             return null;
 
         if (order.Status is not (OrderStatus.Pending or OrderStatus.Confirmed))
         {
-            _logger.LogWarning("Cannot cancel order {OrderId} with status '{Status}'", id, order.Status);
+            var safeStatus = LogSanitizer.Sanitize(order.Status);
+            _logger.LogWarning("Cannot cancel order {OrderId} with status '{Status}'", safeOrderId, safeStatus);
             return null;
         }
 
@@ -153,7 +164,7 @@ public class OrderServiceImpl : IOrderService
         order.UpdatedAt = DateTime.UtcNow;
 
         var response = await _container.ReplaceItemAsync(order, order.Id, new PartitionKey(order.UserId));
-        _logger.LogInformation("Cancelled order {OrderId}", id);
+        _logger.LogInformation("Cancelled order {OrderId}", safeOrderId);
         return response.Resource;
     }
 

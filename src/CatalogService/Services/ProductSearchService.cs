@@ -1,4 +1,5 @@
 using Microsoft.Azure.Cosmos;
+using SharedLibrary.Logging;
 using SharedLibrary.Models;
 
 namespace CatalogService.Services;
@@ -16,7 +17,8 @@ public class ProductSearchService : IProductSearchService
 
     public async Task<IEnumerable<Product>> SearchAsync(string query)
     {
-        _logger.LogInformation("Searching products with query: {Query}", query);
+        var safeQuery = LogSanitizer.Sanitize(query);
+        _logger.LogInformation("Searching products with query: {Query}", safeQuery);
 
         if (query.Length > 200)
         {

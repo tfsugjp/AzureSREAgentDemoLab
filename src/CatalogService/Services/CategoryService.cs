@@ -1,4 +1,5 @@
 using Microsoft.Azure.Cosmos;
+using SharedLibrary.Logging;
 using SharedLibrary.Models;
 
 namespace CatalogService.Services;
@@ -33,7 +34,8 @@ public class CategoryService : ICategoryService
 
     public async Task<Category?> GetByIdAsync(string id)
     {
-        _logger.LogInformation("Retrieving category with ID: {CategoryId}", id);
+        var safeCategoryId = LogSanitizer.Sanitize(id);
+        _logger.LogInformation("Retrieving category with ID: {CategoryId}", safeCategoryId);
 
         try
         {
@@ -42,7 +44,7 @@ public class CategoryService : ICategoryService
         }
         catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
-            _logger.LogWarning("Category not found: {CategoryId}", id);
+            _logger.LogWarning("Category not found: {CategoryId}", safeCategoryId);
             return null;
         }
     }
