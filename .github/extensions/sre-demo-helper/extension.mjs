@@ -1,5 +1,5 @@
 // Extension: sre-demo-helper
-// Demo helper tools and guardrails for the GlobalAzureDemo2026 SRE Agent demo.
+// Demo helper tools and guardrails for the AzureSREAgentDemoLab SRE Agent demo.
 //
 // Provides:
 //   - Tools that wrap the repository demo scripts (cross-platform: pwsh on
@@ -179,7 +179,7 @@ const session = await joinSession({
         // Inject repository conventions so the agent follows them automatically.
         onSessionStart: async () => ({
             additionalContext: [
-                "GlobalAzureDemo2026 conventions:",
+                "AzureSREAgentDemoLab conventions:",
                 "- License: MIT. Code comments and documentation in English; provide Japanese copies as *_ja.md.",
                 "- Never delete Japanese documents (*_ja.md).",
                 "- Files use LF line endings and UTF-8 without BOM.",

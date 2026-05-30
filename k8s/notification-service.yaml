@@ -2,10 +2,10 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: notification-service
-  namespace: global-azure-demo
+  namespace: azure-sre-agent-demo-lab
   labels:
     app: notification-service
-    app.kubernetes.io/part-of: global-azure-demo-2026
+    app.kubernetes.io/part-of: azure-sre-agent-demo-lab
 spec:
   replicas: 2
   selector:
@@ -74,7 +74,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: notification-service
-  namespace: global-azure-demo
+  namespace: azure-sre-agent-demo-lab
 spec:
   selector:
     app: notification-service

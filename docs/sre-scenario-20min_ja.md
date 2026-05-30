@@ -208,7 +208,7 @@ Severity: 2 (警告)
 
 #### GitHub ルート
 
-1. **GitHub -> tfsugjp/GlobalAzureDemo2026 -> Issues** を開く
+1. **GitHub -> tfsugjp/AzureSREAgentDemoLab -> Issues** を開く
 2. 新しい Issue を確認する
 3. 次の情報が含まれていることを確認する
    - タイトル例: `[SRE] High latency detected in Order Service`

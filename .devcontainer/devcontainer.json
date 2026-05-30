@@ -1,5 +1,5 @@
 {
-  "name": "GlobalAzureDemo2026",
+  "name": "AzureSREAgentDemoLab",
   "build": {
     "dockerfile": "Dockerfile",
     "context": ".."
@@ -10,7 +10,7 @@
     "memory": "8gb",
     "storage": "32gb"
   },
-  "workspaceFolder": "/workspaces/GlobalAzureDemo2026",
+  "workspaceFolder": "/workspaces/AzureSREAgentDemoLab",
   "remoteUser": "root",
   "runArgs": [
     "--init",
@@ -62,7 +62,7 @@
       ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash",
-        "dotnet.defaultSolution": "GlobalAzureDemo2026.slnx",
+        "dotnet.defaultSolution": "AzureSREAgentDemoLab.slnx",
         "files.insertFinalNewline": true,
         "remote.autoForwardPorts": true
       }

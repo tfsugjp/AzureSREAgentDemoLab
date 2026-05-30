@@ -3,7 +3,7 @@
 set -euo pipefail
 
 SERVICE_NAME="${1:-}"
-RUN_STATE_DIR="/workspaces/GlobalAzureDemo2026/.devcontainer/.run"
+RUN_STATE_DIR="/workspaces/AzureSREAgentDemoLab/.devcontainer/.run"
 
 if [[ -z "$SERVICE_NAME" ]]; then
   echo "Usage: bash .devcontainer/run-service.sh <catalog|order|notification>"

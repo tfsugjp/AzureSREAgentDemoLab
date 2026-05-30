@@ -267,7 +267,7 @@ The exact destination depends on how your relay is configured. The Bicep overlay
 
 #### Option B: GitHub
 
-1. Navigate to **GitHub -> tfsugjp/GlobalAzureDemo2026 -> Issues**
+1. Navigate to **GitHub -> tfsugjp/AzureSREAgentDemoLab -> Issues**
 2. Look for a new issue with a title like:
    - `[SRE] High latency detected in Order Service`
    - `[SRE] Server response time exceeded threshold`

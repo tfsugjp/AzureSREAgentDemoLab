@@ -1,4 +1,4 @@
-# GlobalAzureDemo2026 - Entra ID Application Registration Setup Script
+# AzureSREAgentDemoLab - Entra ID Application Registration Setup Script
 # このスクリプトは、Container Apps API用のEntra IDアプリケーション登録を作成し、
 # azd環境に必要な設定を追加します。
 
@@ -16,7 +16,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "GlobalAzureDemo2026 Entra ID Setup" -ForegroundColor Cyan
+Write-Host "AzureSREAgentDemoLab Entra ID Setup" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -38,7 +38,7 @@ Write-Host ""
 
 # ステップ2: Entra IDアプリケーション登録を作成
 Write-Host "[2/5] Entra IDアプリケーション登録を作成中..." -ForegroundColor Yellow
-$appDisplayName = "GlobalAzureDemo-API-$EnvironmentName"
+$appDisplayName = "AzureSREAgentDemoLab-API-$EnvironmentName"
 
 try {
     # 既存のアプリケーション登録を確認

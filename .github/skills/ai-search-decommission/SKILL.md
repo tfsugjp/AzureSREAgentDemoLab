@@ -1,6 +1,6 @@
 ---
 name: ai-search-decommission
-description: "Remove Azure AI Search from the GlobalAzureDemo2026 SRE Agent demo. WHEN: the SRE Agent no longer uses Azure AI Search, AI_SEARCH outputs or srch-* resources still exist, a previously deployed Microsoft.Search/searchServices needs cleanup, infra/modules/ai-search.bicep references must be removed, or azd postprovision still runs setup-ai-search."
+description: "Remove Azure AI Search from the AzureSREAgentDemoLab SRE Agent demo. WHEN: the SRE Agent no longer uses Azure AI Search, AI_SEARCH outputs or srch-* resources still exist, a previously deployed Microsoft.Search/searchServices needs cleanup, infra/modules/ai-search.bicep references must be removed, or azd postprovision still runs setup-ai-search."
 license: MIT
 metadata:
   author: GitHub Copilot

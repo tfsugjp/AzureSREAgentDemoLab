@@ -6,7 +6,7 @@
 //
 // デプロイ例:
 //   az deployment group create \
-//     --resource-group rg-global-azure-demo \
+//     --resource-group rg-azure-sre-agent-demo-lab \
 //     --template-file infra/main-aks.bicep \
 //     --parameters environmentName=dev entraTenantId=<tid> entraClientId=<cid> entraAudience=<aud>
 // ================================================================
@@ -51,7 +51,7 @@ var commonTags = union(tags, {
   'azd-env-name': environmentName
   environment: environmentName
   environmentType: environmentType
-  project: 'GlobalAzureDemo2026'
+  project: 'AzureSREAgentDemoLab'
   workload: 'education'
   hostingPlatform: 'aks'
 })

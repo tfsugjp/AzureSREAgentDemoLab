@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-REPO_ROOT="/workspaces/GlobalAzureDemo2026"
+REPO_ROOT="/workspaces/AzureSREAgentDemoLab"
 
 git config --global --add safe.directory "$REPO_ROOT"
 git lfs install --skip-repo >/dev/null
@@ -30,7 +30,7 @@ fi
 az bicep install --only-show-errors || az bicep upgrade --only-show-errors
 
 cd "$REPO_ROOT"
-dotnet restore GlobalAzureDemo2026.slnx
+dotnet restore AzureSREAgentDemoLab.slnx
 
 echo "[devcontainer] Tool versions"
 dotnet --version

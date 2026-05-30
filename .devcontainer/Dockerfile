@@ -52,4 +52,4 @@ RUN install -m 0755 -d /etc/apt/keyrings \
         docker-compose-plugin \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /workspaces/GlobalAzureDemo2026
+WORKDIR /workspaces/AzureSREAgentDemoLab

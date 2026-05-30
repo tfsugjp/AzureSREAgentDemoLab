@@ -1,12 +1,12 @@
 # Azure SRE Agent Demo Setup Guide
 
-This guide walks you through setting up the Azure SRE Agent integration with the GlobalAzureDemo2026 application for incident detection and relay-backed incident routing to Azure DevOps, GitHub, or both.
+This guide walks you through setting up the Azure SRE Agent integration with the AzureSREAgentDemoLab application for incident detection and relay-backed incident routing to Azure DevOps, GitHub, or both.
 
 ## Prerequisites
 
 - Azure subscription with appropriate permissions (Owner or Contributor role)
 - Azure CLI (`az`) installed
-- GitHub account with access to the GlobalAzureDemo2026 repository
+- GitHub account with access to the AzureSREAgentDemoLab repository
 - Azure DevOps organization and project (optional, if using Azure DevOps routing)
 - GitHub repository admin or maintainer access (required for GitHub issue routing)
 - PowerShell 7+ (for Windows) or Bash (for macOS/Linux)
@@ -96,7 +96,7 @@ export AZURE_SUBSCRIPTION_ID="<your-subscription-id>"
 export AZURE_DEVOPS_ORG_URL="https://dev.azure.com/<your-org>"
 export AZURE_DEVOPS_PROJECT="SRE-Demo"
 export GITHUB_OWNER="<your-github-owner>"
-export GITHUB_REPO="GlobalAzureDemo2026"
+export GITHUB_REPO="AzureSREAgentDemoLab"
 ```
 
 **PowerShell 7:**
@@ -108,7 +108,7 @@ $env:AZURE_SUBSCRIPTION_ID = "<your-subscription-id>"
 $env:AZURE_DEVOPS_ORG_URL = "https://dev.azure.com/<your-org>"
 $env:AZURE_DEVOPS_PROJECT = "SRE-Demo"
 $env:GITHUB_OWNER = "<your-github-owner>"
-$env:GITHUB_REPO = "GlobalAzureDemo2026"
+$env:GITHUB_REPO = "AzureSREAgentDemoLab"
 ```
 
 ### 1.2 Create Resource Group
@@ -241,8 +241,8 @@ When configuring your SRE Agent instance, register the GitHub connector:
 
 ```
 Connector Type: GitHub
-Name: GlobalAzureDemo-Repo
-Repository: tfsugjp/GlobalAzureDemo2026
+Name: AzureSREAgentDemoLab-Repo
+Repository: tfsugjp/AzureSREAgentDemoLab
 Authentication: Personal Access Token (from Step 3.1)
 Permissions: Read repository content, read project history, create and update issues
 ```
@@ -619,4 +619,4 @@ This scenario includes:
 For issues or questions:
 1. Check **Troubleshooting** section above
 2. Review [Azure SRE Agent FAQ](https://sre.azure.com/docs/faqs)
-3. Open an issue on the [GlobalAzureDemo2026 repository](https://github.com/tfsugjp/GlobalAzureDemo2026)
+3. Open an issue on the [AzureSREAgentDemoLab repository](https://github.com/tfsugjp/AzureSREAgentDemoLab)

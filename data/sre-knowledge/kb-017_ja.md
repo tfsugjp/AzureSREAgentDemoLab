@@ -34,7 +34,7 @@ Docker コンテナのビルドまたは docker-compose での起動が失敗す
 ## ローカル開発コマンド
 ```bash
 # ソリューション全体のビルド
-dotnet build GlobalAzureDemo2026.slnx
+dotnet build AzureSREAgentDemoLab.slnx
 
 # Docker Compose でのローカル起動
 docker-compose up --build

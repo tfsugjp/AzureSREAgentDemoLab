@@ -29,7 +29,7 @@ var commonTags = union(tags, {
   'azd-env-name': environmentName
   environment: environmentName
   environmentType: environmentType
-  project: 'GlobalAzureDemo2026'
+  project: 'AzureSREAgentDemoLab'
   workload: 'education'
 })
 

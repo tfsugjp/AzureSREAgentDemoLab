@@ -8,7 +8,7 @@ if [[ $# -ne 1 ]]; then
 fi
 
 ACR_NAME="$1"
-NAMESPACE="global-azure-demo"
+NAMESPACE="azure-sre-agent-demo-lab"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"

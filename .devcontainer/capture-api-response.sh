@@ -3,7 +3,7 @@
 set -euo pipefail
 
 MODE="${1:-local}"
-CAPTURE_ROOT="/workspaces/GlobalAzureDemo2026/.devcontainer/.captures"
+CAPTURE_ROOT="/workspaces/AzureSREAgentDemoLab/.devcontainer/.captures"
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 
 case "$MODE" in
