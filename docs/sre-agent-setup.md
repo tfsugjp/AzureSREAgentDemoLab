@@ -441,10 +441,35 @@ Resolution Steps:
 
 Refer to: [Azure SRE Agent - Memory & Knowledge Base](https://learn.microsoft.com/en-us/azure/sre-agent/memory)
 
-Add runbooks to your SRE Agent configuration:
-- Upload runbook YAML files to the agent's knowledge base
-- Tag with service names: `catalog`, `order`, `notification`
-- Set urgency levels: `critical`, `high`, `medium`
+This repository ships a ready-to-use knowledge base as Markdown runbooks under
+`data/sre-knowledge/`. Each entry is provided in two languages so you can choose
+which to register:
+
+- `kb-XXX.md` — English (canonical)
+- `kb-XXX_ja.md` — Japanese
+
+Each file uses YAML front matter (`id`, `title`, `category`, `service`,
+`severity`, `tags`, `lastUpdated`) followed by a Markdown body. The SRE Agent no
+longer uses Azure AI Search; knowledge is uploaded directly to the agent's memory
+(data plane `POST /api/v1/agentmemory/upload`).
+
+Upload the knowledge base with the helper script and pick the language
+(`en` default, `ja`, or `all`):
+
+**Bash:**
+```bash
+scripts/upload-sre-knowledge.sh -g <resource-group> -n <agent-name> --language all
+```
+
+**PowerShell 7:**
+```powershell
+scripts/upload-sre-knowledge.ps1 -ResourceGroup <name> -AgentName <name> -Language all
+```
+
+To author new runbooks, add both `data/sre-knowledge/kb-XXX.md` and
+`data/sre-knowledge/kb-XXX_ja.md`, then re-run the upload script. The Markdown
+front matter already carries service names (`CatalogService`, `OrderService`,
+`NotificationService`) and severity levels (`critical`, `high`, `medium`, `low`).
 
 ### 6.3 Enable Agent Reasoning
 

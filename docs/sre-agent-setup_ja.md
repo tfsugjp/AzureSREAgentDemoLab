@@ -304,6 +304,36 @@ SRE Agent のメモリにランブックを追加します。
   4. ネットワーク遅延を確認
 ```
 
+### 6.2 ランブックを SRE Agent メモリに登録
+
+このリポジトリには、すぐに使えるナレッジベースを Markdown ランブックとして
+`data/sre-knowledge/` 配下に同梱しています。各エントリは 2 言語で用意しており、
+どちらを登録するか選択できます。
+
+- `kb-XXX.md` — 英語 (正本)
+- `kb-XXX_ja.md` — 日本語
+
+各ファイルは YAML フロントマター (`id`, `title`, `category`, `service`,
+`severity`, `tags`, `lastUpdated`) と Markdown 本文で構成されます。SRE Agent は
+Azure AI Search を使用しなくなり、ナレッジはエージェントのメモリへ直接アップロード
+されます (データプレーン `POST /api/v1/agentmemory/upload`)。
+
+ヘルパースクリプトで言語 (`en` 既定 / `ja` / `all`) を選んでアップロードします。
+
+**Bash:**
+```bash
+scripts/upload-sre-knowledge.sh -g <resource-group> -n <agent-name> --language all
+```
+
+**PowerShell 7:**
+```powershell
+scripts/upload-sre-knowledge.ps1 -ResourceGroup <name> -AgentName <name> -Language all
+```
+
+新しいランブックを追加する場合は、`data/sre-knowledge/kb-XXX.md` と
+`data/sre-knowledge/kb-XXX_ja.md` の両方を作成し、アップロードスクリプトを
+再実行してください。
+
 ---
 
 ## ステップ 7: セットアップを検証

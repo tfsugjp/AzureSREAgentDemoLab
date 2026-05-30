@@ -62,8 +62,6 @@ var containerAppsEnvironmentName = take('cae-${envToken}-${uniqueToken}', 32)
 var cosmosAccountName = take('cosmos-${envToken}-${uniqueToken}', 44)
 var acrName = take('gad${compactEnvToken}${uniqueString(subscription().subscriptionId, resourceGroup().id, environmentName, location)}', 50)
 
-var searchServiceName = take('srch-${envToken}-${uniqueToken}', 60)
-
 var catalogServiceName = take('ca-cat-${envToken}-${uniqueToken}', 32)
 var orderServiceName = take('ca-ord-${envToken}-${uniqueToken}', 32)
 var notificationServiceName = take('ca-not-${envToken}-${uniqueToken}', 32)
@@ -206,16 +204,6 @@ resource cosmosSqlDatabase 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2
   }
 }
 
-module aiSearch './modules/ai-search.bicep' = {
-  name: 'aiSearchDeployment'
-  params: {
-    name: searchServiceName
-    location: location
-    sku: isProduction ? 'basic' : 'free'
-    tags: commonTags
-  }
-}
-
 resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2024-10-02-preview' = {
   name: containerAppsEnvironmentName
   location: location
@@ -355,8 +343,6 @@ module sreResources './modules/sre-resources.bicep' = if (enableSreDemo) {
 output ACR_NAME string = containerRegistry.name
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerRegistry.properties.loginServer
 output AZURE_CONTAINER_REGISTRY_NAME string = containerRegistry.name
-output AI_SEARCH_ENDPOINT string = aiSearch.outputs.endpoint
-output AI_SEARCH_NAME string = aiSearch.outputs.name
 output APPLICATION_INSIGHTS_NAME string = applicationInsights.name
 output CATALOG_SERVICE_ENDPOINT string = catalogService.outputs.endpoint
 output CATALOG_SERVICE_NAME string = catalogService.outputs.name
