@@ -417,3 +417,7 @@ ehthumbs_vista.db
 $RECYCLE.BIN/
 *.lnk
 *.swp
+
+# Kubernetes secrets: keep only the template in source control.
+# Copy k8s/secrets.template.yaml to k8s/secrets.yaml and fill in real values locally.
+k8s/secrets.yaml
