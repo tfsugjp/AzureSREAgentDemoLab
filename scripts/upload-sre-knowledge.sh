@@ -121,4 +121,4 @@ if [[ "$FAILED" -gt 0 ]]; then
 fi
 
 echo "Upload complete. Check indexing status with:"
-echo "  curl -H \"Authorization: Bearer \$TOKEN\" ${ENDPOINT}/api/v1/agentmemory/indexer-status"
+echo "  curl -H \"Authorization: Bearer \$(az account get-access-token --resource https://azuresre.dev --query accessToken -o tsv)\" \"${ENDPOINT}/api/v1/agentmemory/indexer-status\""

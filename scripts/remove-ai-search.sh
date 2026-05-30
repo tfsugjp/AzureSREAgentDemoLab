@@ -64,7 +64,10 @@ if ! az group show --name "$RESOURCE_GROUP" >/dev/null 2>&1; then
   exit 0
 fi
 
-mapfile -t SEARCH_SERVICES < <(az resource list \
+SEARCH_SERVICES=()
+while IFS= read -r line; do
+  [[ -n "$line" ]] && SEARCH_SERVICES+=("$line")
+done < <(az resource list \
   --resource-group "$RESOURCE_GROUP" \
   --resource-type "Microsoft.Search/searchServices" \
   --query "[].name" -o tsv)

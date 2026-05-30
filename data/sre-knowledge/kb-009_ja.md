@@ -14,7 +14,7 @@ lastUpdated: 2026-04-01T00:00:00Z
 azd up コマンドの実行が失敗する。プロビジョニングフェーズまたはデプロイフェーズでエラーが発生する。
 
 ## プロビジョニングフェーズの一般的なエラー
-1. リソースプロバイダー未登録: Microsoft.App, Microsoft.DocumentDB, Microsoft.Search などのプロバイダーが未登録
+1. リソースプロバイダー未登録: Microsoft.App, Microsoft.DocumentDB などのプロバイダーが未登録
 2. リソース名の競合: グローバルに一意な名前 (Cosmos DB, ACR) の重複
 3. クォータ制限: リージョンのリソースクォータ超過
 4. Entra ID 設定不足: ENTRA_TENANT_ID, ENTRA_CLIENT_ID, ENTRA_AUDIENCE が未設定

@@ -46,6 +46,5 @@ lastUpdated: 2026-04-01T00:00:00Z
 - **認証**: Microsoft Entra ID
 - **監視**: Application Insights + Log Analytics Workspace
 - **コンテナレジストリ**: Azure Container Registry
-- **検索**: Azure AI Search
 - **IaC**: Bicep (infra/main.bicep)
 - **デプロイ**: Azure Developer CLI (azd)
