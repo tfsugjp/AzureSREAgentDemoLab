@@ -1,4 +1,5 @@
 using Microsoft.Azure.Cosmos;
+using SharedLibrary.Logging;
 using SharedLibrary.Models;
 
 namespace CatalogService.Services;
@@ -33,7 +34,8 @@ public class ProductService : IProductService
 
     public async Task<Product?> GetByIdAsync(string id)
     {
-        _logger.LogInformation("Retrieving product with ID: {ProductId}", id);
+        var safeProductId = LogSanitizer.Sanitize(id);
+        _logger.LogInformation("Retrieving product with ID: {ProductId}", safeProductId);
 
         var query = new QueryDefinition("SELECT * FROM c WHERE c.id = @id")
             .WithParameter("@id", id);
@@ -52,7 +54,8 @@ public class ProductService : IProductService
 
     public async Task<Product> CreateAsync(Product product)
     {
-        _logger.LogInformation("Creating product: {ProductName}", product.Name);
+        var safeProductName = LogSanitizer.Sanitize(product.Name);
+        _logger.LogInformation("Creating product: {ProductName}", safeProductName);
 
         product.CreatedAt = DateTime.UtcNow;
         product.UpdatedAt = DateTime.UtcNow;
@@ -63,7 +66,8 @@ public class ProductService : IProductService
 
     public async Task<Product?> UpdateAsync(string id, Product product)
     {
-        _logger.LogInformation("Updating product with ID: {ProductId}", id);
+        var safeProductId = LogSanitizer.Sanitize(id);
+        _logger.LogInformation("Updating product with ID: {ProductId}", safeProductId);
 
         var existing = await GetByIdAsync(id);
         if (existing is null)
@@ -79,7 +83,8 @@ public class ProductService : IProductService
 
     public async Task<bool> DeleteAsync(string id)
     {
-        _logger.LogInformation("Soft-deleting product with ID: {ProductId}", id);
+        var safeProductId = LogSanitizer.Sanitize(id);
+        _logger.LogInformation("Soft-deleting product with ID: {ProductId}", safeProductId);
 
         var existing = await GetByIdAsync(id);
         if (existing is null)

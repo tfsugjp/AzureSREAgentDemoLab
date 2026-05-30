@@ -1,4 +1,5 @@
 using Microsoft.Azure.Cosmos;
+using SharedLibrary.Logging;
 using SharedLibrary.Models;
 
 namespace CatalogService.Services;
@@ -16,7 +17,8 @@ public class InventoryService : IInventoryService
 
     public async Task<InventoryItem?> GetByProductIdAsync(string productId)
     {
-        _logger.LogInformation("Retrieving inventory for product: {ProductId}", productId);
+        var safeProductId = LogSanitizer.Sanitize(productId);
+        _logger.LogInformation("Retrieving inventory for product: {ProductId}", safeProductId);
 
         var query = new QueryDefinition("SELECT * FROM c WHERE c.productId = @productId")
             .WithParameter("@productId", productId);
@@ -35,7 +37,8 @@ public class InventoryService : IInventoryService
 
     public async Task<InventoryItem?> UpdateAsync(string productId, InventoryItem item)
     {
-        _logger.LogInformation("Updating inventory for product: {ProductId}", productId);
+        var safeProductId = LogSanitizer.Sanitize(productId);
+        _logger.LogInformation("Updating inventory for product: {ProductId}", safeProductId);
 
         var existing = await GetByProductIdAsync(productId);
         if (existing is null)

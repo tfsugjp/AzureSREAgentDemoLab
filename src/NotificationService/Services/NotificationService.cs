@@ -1,4 +1,5 @@
 using Microsoft.Azure.Cosmos;
+using SharedLibrary.Logging;
 using SharedLibrary.Models;
 
 namespace NotificationService.Services;
@@ -32,6 +33,7 @@ public class NotificationServiceImpl : INotificationService
 
     public async Task<Notification?> GetByIdAsync(string id)
     {
+        var safeNotificationId = LogSanitizer.Sanitize(id);
         var query = _container.GetItemQueryIterator<Notification>(
             new QueryDefinition("SELECT * FROM c WHERE c.id = @id")
                 .WithParameter("@id", id));
@@ -46,23 +48,26 @@ public class NotificationServiceImpl : INotificationService
             }
         }
 
-        _logger.LogWarning("Notification with ID {Id} not found", id);
+        _logger.LogWarning("Notification with ID {Id} not found", safeNotificationId);
         return null;
     }
 
     public async Task<Notification> CreateAsync(Notification notification)
     {
+        var safeNotificationId = LogSanitizer.Sanitize(notification.Id);
+        var safeUserId = LogSanitizer.Sanitize(notification.UserId);
         notification.CreatedAt = DateTime.UtcNow;
         var response = await _container.CreateItemAsync(
             notification,
             new PartitionKey(notification.UserId));
 
-        _logger.LogInformation("Created notification {Id} for user {UserId}", notification.Id, notification.UserId);
+        _logger.LogInformation("Created notification {Id} for user {UserId}", safeNotificationId, safeUserId);
         return response.Resource;
     }
 
     public async Task<Notification?> MarkAsReadAsync(string id)
     {
+        var safeNotificationId = LogSanitizer.Sanitize(id);
         var notification = await GetByIdAsync(id);
         if (notification == null)
         {
@@ -75,12 +80,13 @@ public class NotificationServiceImpl : INotificationService
             notification.Id,
             new PartitionKey(notification.UserId));
 
-        _logger.LogInformation("Marked notification {Id} as read", id);
+        _logger.LogInformation("Marked notification {Id} as read", safeNotificationId);
         return response.Resource;
     }
 
     public async Task<IEnumerable<Notification>> GetByUserIdAsync(string userId)
     {
+        var safeUserId = LogSanitizer.Sanitize(userId);
         var query = _container.GetItemQueryIterator<Notification>(
             new QueryDefinition("SELECT * FROM c WHERE c.userId = @userId ORDER BY c.createdAt DESC")
                 .WithParameter("@userId", userId),
@@ -96,12 +102,13 @@ public class NotificationServiceImpl : INotificationService
             results.AddRange(response);
         }
 
-        _logger.LogInformation("Retrieved {Count} notifications for user {UserId}", results.Count, userId);
+        _logger.LogInformation("Retrieved {Count} notifications for user {UserId}", results.Count, safeUserId);
         return results;
     }
 
     public async Task<bool> DeleteAsync(string id)
     {
+        var safeNotificationId = LogSanitizer.Sanitize(id);
         var notification = await GetByIdAsync(id);
         if (notification == null)
         {
@@ -112,7 +119,7 @@ public class NotificationServiceImpl : INotificationService
             id,
             new PartitionKey(notification.UserId));
 
-        _logger.LogInformation("Deleted notification {Id}", id);
+        _logger.LogInformation("Deleted notification {Id}", safeNotificationId);
         return true;
     }
 }
