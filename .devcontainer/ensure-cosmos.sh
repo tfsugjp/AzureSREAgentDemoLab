@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-REPO_ROOT="/workspaces/GlobalAzureDemo2026"
+REPO_ROOT="/workspaces/AzureSREAgentDemoLab"
 COSMOS_URL="https://host.docker.internal:8081/_explorer/emulator.pem"
 
 echo "[devcontainer] Checking Cosmos DB Emulator availability..."

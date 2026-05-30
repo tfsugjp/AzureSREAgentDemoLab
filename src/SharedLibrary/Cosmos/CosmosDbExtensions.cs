@@ -41,7 +41,7 @@ public static class CosmosDbExtensions
                     PropertyNamingPolicy = CosmosPropertyNamingPolicy.CamelCase
                 },
                 ConnectionMode = connectionMode,
-                ApplicationName = "GlobalAzureDemo2026"
+                ApplicationName = "AzureSREAgentDemoLab"
             };
 
             if (allowInsecureCertificate)

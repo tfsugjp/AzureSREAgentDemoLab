@@ -1,8 +1,8 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: global-azure-demo-gateway
-  namespace: global-azure-demo
+  name: azure-sre-agent-demo-lab-gateway
+  namespace: azure-sre-agent-demo-lab
   annotations:
     alb.networking.azure.io/alb-id: <AGC_RESOURCE_ID>
 spec:

@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-echo "[devcontainer] Workspace ready: /workspaces/GlobalAzureDemo2026"
+echo "[devcontainer] Workspace ready: /workspaces/AzureSREAgentDemoLab"
 
 if command -v docker >/dev/null 2>&1; then
   if docker version >/dev/null 2>&1; then

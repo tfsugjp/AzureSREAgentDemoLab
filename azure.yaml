@@ -1,6 +1,6 @@
-name: global-azure-demo2026
+name: azure-sre-agent-demo-lab
 metadata:
-  template: global-azure-demo2026@0.0.1
+  template: azure-sre-agent-demo-lab@0.0.1
 infra:
   provider: bicep
   path: infra

@@ -1,6 +1,6 @@
 // Bicep template for Microsoft Entra App Registration (API)
 // Requires: Bicep v0.21.1+ with Microsoft Graph extension enabled
-// Deploy: az deployment group create --resource-group <rg> --template-file entra-app.bicep --parameters appDisplayName='GlobalAzureDemo-API-Dev'
+// Deploy: az deployment group create --resource-group <rg> --template-file entra-app.bicep --parameters appDisplayName='<your-entra-app-name>'
 
 extension 'br:mcr.microsoft.com/bicep/extensions/microsoftgraph/v1.0:1.0.0'
 
@@ -18,7 +18,7 @@ param signInAudience string = 'AzureADMyOrg'
 
 @description('Tags for the application')
 param tags array = [
-  'GlobalAzureDemo2026'
+  'AzureSREAgentDemoLab'
   'ContainerApps'
   'API'
 ]
