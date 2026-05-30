@@ -10,7 +10,7 @@ lastUpdated: 2026-04-01T00:00:00Z
 
 # システムアーキテクチャ概要
 
-## GlobalAzureDemo2026 アーキテクチャ
+## AzureSREAgentDemoLab アーキテクチャ
 
 ### サービス構成
 本システムは 3 つのマイクロサービスで構成される:

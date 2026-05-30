@@ -1,6 +1,6 @@
 ---
 name: sre-knowledge-author
-description: "Author, maintain, and upload the GlobalAzureDemo2026 SRE Agent knowledge base as Markdown. WHEN: adding or editing runbooks under data/sre-knowledge, converting knowledge to Markdown, keeping English (kb-*.md) and Japanese (kb-*_ja.md) copies in sync, or uploading knowledge to an Azure SRE Agent's memory in English, Japanese, or both."
+description: "Author, maintain, and upload the AzureSREAgentDemoLab SRE Agent knowledge base as Markdown. WHEN: adding or editing runbooks under data/sre-knowledge, converting knowledge to Markdown, keeping English (kb-*.md) and Japanese (kb-*_ja.md) copies in sync, or uploading knowledge to an Azure SRE Agent's memory in English, Japanese, or both."
 license: MIT
 metadata:
   author: GitHub Copilot

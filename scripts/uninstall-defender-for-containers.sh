@@ -11,7 +11,7 @@
 # Example:
 #   ./uninstall-defender-for-containers.sh \
 #     "00000000-0000-0000-0000-000000000000" \
-#     "rg-global-azure-demo" \
+#     "rg-azure-sre-agent-demo-lab" \
 #     "aks-dev-abc123"
 
 set -euo pipefail
